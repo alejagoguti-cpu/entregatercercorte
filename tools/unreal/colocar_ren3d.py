@@ -33,7 +33,7 @@ for k, (esp, alto0) in enumerate(ESPECIES):
     tr = []
     for x, y, alto, rot, wf, s in D['arboles']:
         if s != k: continue
-        e = alto / alto0 * (1.0 if k == 0 else 1.6)  # el island tree es bajo: se agranda un poco
+        e = alto / alto0  # altura real del árbol
         tr.append(unreal.Transform(unreal.Vector(x * 100, -y * 100, (suelo - 0.2) * 100), unreal.Rotator(roll=0.0, pitch=0.0, yaw=rot), unreal.Vector(e * wf, e * wf, e)))
     for parte in ('hojas', 'madera'):
         n = '%s_L0_%s' % (esp, parte)

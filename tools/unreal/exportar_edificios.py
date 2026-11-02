@@ -170,12 +170,19 @@ print('edificios: %d (%d triangulos)' % (n, sum(len(x) for x in F.values())))
 
 # ---------- árboles ----------
 T = json.load(open(os.path.join(RAIZ, 'data3d', 'trees.json'), encoding='utf-8'))['t']
-arb = []
+# Altura REAL de cada árbol (campo 2 del censo, en m: el 60 % de los de la zona miden 1-2 m: sauco, chicalá, acacias jóvenes).
+# Antes se subían todos a 6,5-14 m con copa de jacarandá y la zona parecía un bosque. Se quitan los repetidos (misma posición).
+arb, vistos = [], set()
 for i, t in enumerate(T):
     x, y = en(t[0], t[1])
     if not enZona(x, y, 100): continue
-    h = max(6.0, min(14.0, 6.5 + (t[2] or 4) * 0.8 + hsh(i) * 3))
-    arb.append([round(x, 2), round(y, 2), round(h, 2), round(hsh(i * 11) * 360, 1), round(0.95 + hsh(i * 5) * 0.3, 3), 0 if hsh(i * 13) < 0.65 else 1])  # especie: 0 jacaranda, 1 island tree (Poly Haven)
+    clave = (round(x), round(y))
+    if clave in vistos: continue
+    vistos.add(clave)
+    h = max(1.5, min(18.0, float(t[2] or 3) * (0.9 + hsh(i) * 0.2)))
+    s = 1 if h < 5 else 0  # pequeños: island tree (copa compacta); medianos y grandes: jacarandá con copa más angosta
+    wf = (0.95 + hsh(i * 5) * 0.2) if s else (0.6 + hsh(i * 5) * 0.2)
+    arb.append([round(x, 2), round(y, 2), round(h, 2), round(hsh(i * 11) * 360, 1), round(wf, 3), s])
 json.dump({'suelo': SUELO, 'arboles': arb}, open(os.path.join(OUT, 'arboles.json'), 'w'))
 print('arboles: %d' % len(arb))
 # copa de lóbulos (icosaedro subdividido) + tronco, 1 m de alto, normales de esfera
