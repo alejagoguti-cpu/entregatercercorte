@@ -56,11 +56,11 @@ P = TX + r'\poliigon\Poliigon_GrassPatchyGround_4585_'
 mats = {
     'pasto': mat_textura('M_Pasto', textura(P + 'BaseColor.jpg'), textura(P + 'Normal.png', True), 0.95, (0.5, 0.55, 0.4)),  # pasto natural, no verde limón
     'parque': mat_textura('M_Parque', textura(TX + r'\textures\pasto_color.jpg'), textura(TX + r'\textures\pasto_normal.jpg', True), 0.95),
-    'via': mat_textura('M_Via', textura(TX + r'\textures\via_color.jpg'), textura(TX + r'\textures\via_normal.jpg', True), 0.85),
+    'via': mat_textura('M_Via', textura(TX + r'\textures\via_color.jpg'), textura(TX + r'\textures\via_normal.jpg', True), 0.8, (0.11, 0.11, 0.115)),  # asfalto gris oscuro: la textura del repo es clara y se confundía con los andenes
     'anden': mat_textura('M_Anden', textura(TX + r'\textures\acera_color.jpg'), textura(TX + r'\textures\acera_normal.jpg', True), 0.8),
     'piso': mat_textura('M_Piso', textura(TX + r'\textures\piso_color.jpg'), textura(TX + r'\textures\piso_normal.jpg', True), 0.9, (0.85, 0.83, 0.8)),
     'plaza': mat_textura('M_Plaza', textura(TX + r'\textures\acera_color.jpg'), textura(TX + r'\textures\acera_normal.jpg', True), 0.85, (1.0, 0.95, 0.9)),
-    'parqueo': mat_textura('M_Parqueo', textura(TX + r'\textures\via_color.jpg'), textura(TX + r'\textures\via_normal.jpg', True), 0.85, (0.9, 0.9, 0.92)),
+    'parqueo': mat_textura('M_Parqueo', textura(TX + r'\textures\via_color.jpg'), textura(TX + r'\textures\via_normal.jpg', True), 0.85, (0.16, 0.16, 0.165)),
     'tierra': mat_textura('M_Tierra', textura(P + 'BaseColor.jpg'), textura(P + 'Normal.png', True), 0.95, (0.75, 0.55, 0.38)),
     'sintetica': mat_liso('M_Sintetica', (0.05, 0.22, 0.06), 0.7),
     'cancha': mat_liso('M_Cancha', (0.06, 0.16, 0.28), 0.6),

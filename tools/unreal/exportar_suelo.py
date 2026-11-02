@@ -117,18 +117,35 @@ for s in (json.load(open(OSM, encoding='utf-8')) if os.path.exists(OSM) else [])
         poligono(m, q, SUELO + 0.035, 6.0); cinta('linea', q + q[:1], 0.12, SUELO + 0.045, esc_u=1.0)
     elif s['tipo'] in CAPA:
         m, dz = CAPA[s['tipo']]; poligono(m, q, SUELO + dz, 4.0)
-ANCHO = {'major': 15.0, 'mid': 10.0, 'local': 6.5}
+# calles como en Kennedy: locales de 6 m con andenes de 1,5 m; intermedias de 9 m con andenes de 2,5 m; avenidas de dos calzadas
+# de 7 m con separador verde de 4 m y andenes de 3 m. Líneas de carril discontinuas (3 m de trazo cada 9 m).
+ANCHO = {'major': 18.0, 'mid': 9.0, 'local': 6.0}   # ancho total entre andenes (avenida: 7 + 4 + 7)
+ANDEN = {'major': 3.0, 'mid': 2.5, 'local': 1.5}
+def trazos(q, desp, z):  # línea discontinua desplazada desp metros del eje
+    acum = 0.0
+    for i in range(len(q) - 1):
+        a, b = q[i], q[i + 1]; L = math.dist(a, b)
+        if L < 0.5: continue
+        dx, dy = (b[0] - a[0]) / L, (b[1] - a[1]) / L; s = (-acum) % 9.0
+        while s < L:
+            e = min(L, s + 3.0); p0 = (a[0] + dx * s, a[1] + dy * s); p1 = (a[0] + dx * e, a[1] + dy * e)
+            cinta('linea', [p0, p1], 0.12, z, desp, esc_u=1.0); s += 9.0
+        acum += L
 CARROS_POR_M = {'major': 0.0, 'mid': 0.0, 'local': 1 / 60.0}  # quietos solo en las calles locales (estacionados); en las avenidas andan (trafico.json)
 N = json.load(open(os.path.join(RAIZ, 'data3d', 'net.json'), encoding='utf-8'))
 carros = []
 for cls, e in N['edges']:
     q = [en(*a) for a in e]
     if len(q) < 2 or not any(enZona(*a, -40) for a in q): continue
-    w = ANCHO.get(cls, 6.5)
-    cinta('anden', q, w + 4.0, SUELO + 0.07, esc_u=2.0, esc_v=2.0)   # andén de 2 m a cada lado (debajo de la vía)
-    cinta('via', q, w, SUELO + 0.10, esc_u=6.0, esc_v=6.0)
-    if cls != 'local':
-        cinta('linea', q, 0.15, SUELO + 0.12, esc_u=1.0)          # línea central
+    w = ANCHO.get(cls, 6.0)
+    cinta('anden', q, w + 2 * ANDEN.get(cls, 1.5), SUELO + 0.07, esc_u=2.0, esc_v=2.0)
+    if cls == 'major':  # dos calzadas y separador verde
+        cinta('via', q, 7.0, SUELO + 0.10, 5.5, esc_u=6.0, esc_v=6.0); cinta('via', q, 7.0, SUELO + 0.10, -5.5, esc_u=6.0, esc_v=6.0)
+        cinta('parque', q, 4.0, SUELO + 0.12, esc_u=5.0, esc_v=5.0)
+        trazos(q, 5.5, SUELO + 0.12); trazos(q, -5.5, SUELO + 0.12)
+    else:
+        cinta('via', q, w, SUELO + 0.10, esc_u=6.0, esc_v=6.0)
+        if cls == 'mid': trazos(q, 0.0, SUELO + 0.12)
     # carros sobre los carriles, con rumbo de la vía
     for i in range(len(q) - 1):
         a, b = q[i], q[i + 1]; L = math.dist(a, b)
@@ -137,7 +154,7 @@ for cls, e in N['edges']:
         k = L * CARROS_POR_M.get(cls, 0.02); n = int(k) + (1 if rnd.random() < k - int(k) else 0)
         for _ in range(n):
             s = rnd.random() * L; sentido = 1 if rnd.random() < 0.5 else -1
-            carril = sentido * (w / 4 if cls != 'local' else 1.5)
+            carril = sentido * (w / 2 - 1.0)  # estacionados contra el andén
             x, y = a[0] + dx * s - dy * carril, a[1] + dy * s + dx * carril
             if enZona(x, y): carros.append([round(x, 2), round(y, 2), round(math.degrees(math.atan2(dy * sentido, dx * sentido)), 1), rnd.randrange(8)])
 with open(os.path.join(OUT, 'suelo.obj'), 'w') as f:
@@ -201,7 +218,7 @@ for cls, r, L in rutas:
             claves = []
             for fr in range(0, int(DUR * FPS) + 1, PASO):
                 x, y, dx, dy = punto(rr, s0 + v * fr / FPS)
-                carril = w / 4  # carril derecho
+                carril = 5.5 if cls == 'major' else w / 4  # en su calzada (avenida: centro de la calzada derecha)
                 claves.append([fr, round(x + dy * carril, 2), round(y - dx * carril, 2), round(math.degrees(math.atan2(dy, dx)), 1)])
             if any(enZona(c[1], c[2], 150) for c in claves): trafico.append({'tipo': rnd.random() < 0.28, 'color': rnd.randrange(8), 'claves': claves})
 json.dump({'suelo': SUELO, 'fps': FPS, 'cuadros': int(DUR * FPS), 'carros': trafico}, open(os.path.join(OUT, 'trafico.json'), 'w'))
