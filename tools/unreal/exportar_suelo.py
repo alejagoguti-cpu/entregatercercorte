@@ -15,7 +15,7 @@ ZC = en(7437, 3271); RADIO = 900.0; SUELO = 15.8
 def enZona(x, y, m=0): return (x - ZC[0]) ** 2 + (y - ZC[1]) ** 2 < (RADIO + m) ** 2
 rnd = random.Random(5)
 
-V, VT, F = [], [], {m: [] for m in ('pasto', 'parque', 'agua', 'via', 'anden', 'linea')}
+V, VT, F = [], [], {m: [] for m in ('pasto', 'parque', 'juncal', 'agua', 'via', 'anden', 'linea')}
 def v(x, y, z): V.append((x, y, z)); return len(V)
 def vt(u, w): VT.append((u, w)); return len(VT)
 def tri(m, a, b, c): F[m].append((a, b, c))
@@ -35,6 +35,21 @@ def triangular(poly):  # recorte de orejas (antihorario); el abanico desde el ce
             tris.append((idx[k - 1], idx[k], idx[(k + 1) % len(idx)])); idx.pop(k)
     if len(idx) == 3: tris.append(tuple(idx))
     return tris
+def dentro(x, y, pts):
+    c = False
+    for i in range(len(pts)):
+        a, b = pts[i], pts[i - 1]
+        if (a[1] > y) != (b[1] > y) and x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1] + 1e-12) + a[0]: c = not c
+    return c
+def charcos(pts, nombre):  # charcos de 12 a 35 m al azar (fijo por humedal) dentro del contorno, sin tocar el borde
+    r0 = random.Random(nombre); xs = [p[0] for p in pts]; ys = [p[1] for p in pts]; out = []
+    area = abs(sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))) / 2
+    for _ in range(4000):
+        if len(out) >= max(3, int(area / 9000)): break
+        x, y, r = r0.uniform(min(xs), max(xs)), r0.uniform(min(ys), max(ys)), r0.uniform(12, 35)
+        if all(dentro(x + math.cos(a) * r * 1.3, y + math.sin(a) * r * 1.3, pts) for a in (0, 1.57, 3.14, 4.71, 0.8, 2.4, 3.9, 5.5)) and all(math.dist((x, y), (o[0], o[1])) > r + o[2] + 15 for o in out):
+            out.append((x, y, r))
+    return out
 def poligono(m, pts, z, esc=4.0):
     pts = [p for i, p in enumerate(pts) if i == 0 or math.dist(p, pts[i - 1]) > 0.05]
     if len(pts) < 3: return
@@ -62,7 +77,10 @@ for w in json.load(open(os.path.join(RAIZ, 'data3d', 'water_bodies.json'), encod
     q = [en(*a) for a in w['pts']]
     if not any(enZona(*a) for a in q): continue
     cerrado = len(q) > 3 and math.dist(q[0], q[-1]) < 1
-    if cerrado: poligono('agua', q[:-1], SUELO + 0.04, 8.0)
+    if cerrado and 'umedal' in w.get('tipo', ''):  # el humedal es casi todo pasto y juncos con charcos sueltos (videos de dron), no un lago
+        poligono('juncal', q[:-1], SUELO + 0.03, 5.0)
+        for cx, cy, r in charcos(q[:-1], w.get('nombre', '')): poligono('agua', [(cx + math.cos(a / 20 * 2 * math.pi) * r * (0.75 + 0.5 * rnd.random()), cy + math.sin(a / 20 * 2 * math.pi) * r * (0.75 + 0.5 * rnd.random())) for a in range(20)], SUELO + 0.05, 8.0)
+    elif cerrado: poligono('agua', q[:-1], SUELO + 0.04, 8.0)
     else: cinta('agua', q, 6 if 'uebrada' in w.get('tipo', '') else 8, SUELO + 0.04, esc_u=8.0, esc_v=8.0)
 ANCHO = {'major': 15.0, 'mid': 10.0, 'local': 6.5}
 CARROS_POR_M = {'major': 0.0, 'mid': 0.0, 'local': 1 / 60.0}  # quietos solo en las calles locales (estacionados); en las avenidas andan (trafico.json)
