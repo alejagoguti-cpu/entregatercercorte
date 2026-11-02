@@ -97,7 +97,7 @@ log('carros: %d' % len(tr))
 # recorte de la malla de Google dentro de la zona: polígono (círculo de 900 m) en longitud y latitud
 MXg = 111320 * math.cos(math.radians(4.63))
 lon0, lat0 = -74.17 + (7437 - 5193.24) / MXg, 4.63 + (3271 - 2090.06) / 110540.0
-R = 900.0
+R = 1600.0
 puntos = [unreal.Vector(lon0 + math.cos(a / 64 * 2 * math.pi) * R / MXg, lat0 + math.sin(a / 64 * 2 * math.pi) * R / 110540.0, 2600.0) for a in range(64)]
 pol = eas.spawn_actor_from_class(unreal.CesiumCartographicPolygon, unreal.Vector(0, 0, 0)); pol.set_actor_label('RECORTE_zona')
 pol.set_polygon_points(unreal.CesiumCoordinateReferenceSystem.LONGITUDE_LATITUDE_HEIGHT, puntos)

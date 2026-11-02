@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
 OUT = sys.argv[1] if len(sys.argv) > 1 else r'C:\Users\ACER\Documents\Unreal Projects\Kennedy360\Importar'
 os.makedirs(OUT, exist_ok=True)
-RADIO = 900.0         # zona del proyecto (igual que la web): afuera queda la malla de Google tal cual
+RADIO = 1600.0        # zona del proyecto (en la web 900 m): afuera queda la malla de Google tal cual
 SUELO = 15.8          # m sobre la altura elipsoidal del origen (2548): el asfalto de la malla de Google está ~16 m más arriba
 # datos (x, y) del modelo -> este/norte del origen de Unreal (GEO de index.html: EX -5193.24, EY -2090.06, LNG0 -74.17, LAT0 4.63)
 MXg, MYg = 111320 * math.cos(math.radians(4.63)), 110540.0

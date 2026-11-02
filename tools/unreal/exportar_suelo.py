@@ -11,7 +11,7 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else r'C:\Users\ACER\Documents\Unreal Pro
 MXg = 111320 * math.cos(math.radians(4.63)); MYg = 110540.0
 DX = -5193.24 - (-74.149778 + 74.17) * MXg; DY = -2090.06 - (4.640683 - 4.63) * MYg
 def en(x, y): return x + DX, y + DY
-ZC = en(7437, 3271); RADIO = 900.0; SUELO = 15.8
+ZC = en(7437, 3271); RADIO = 1600.0; SUELO = 15.8
 def enZona(x, y, m=0): return (x - ZC[0]) ** 2 + (y - ZC[1]) ** 2 < (RADIO + m) ** 2
 rnd = random.Random(5)
 
