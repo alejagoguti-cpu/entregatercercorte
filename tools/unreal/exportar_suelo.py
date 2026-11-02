@@ -154,33 +154,62 @@ for cls, r, L in rutas:
 json.dump({'suelo': SUELO, 'fps': FPS, 'cuadros': int(DUR * FPS), 'carros': trafico}, open(os.path.join(OUT, 'trafico.json'), 'w'))
 print('trafico: %d rutas, %d carros en movimiento' % (len(rutas), len(trafico)))
 
-# ---------- carros: sedán y camioneta (SUV), frente hacia +X, una sola malla con cuatro materiales ----------
-def carro(nombre, cuerpo, cabina, ancho, ruedas, radio):
-    CV, CF = [], {'pintura': [], 'vidrio': [], 'llanta': [], 'luces': []}
+# ---------- carros: sedán y camioneta (SUV), frente hacia +X, una sola malla con varios materiales ----------
+# Carrocería por secciones transversales (no un perfil plano extruido): cada estación a lo largo del carro tiene una sección
+# redondeada de 10 puntos que se angosta hacia arriba (costados curvos, techo abombado); vidrios inclinados, rines plateados,
+# espejos, faros, luces traseras, parachoques y placa amarilla como las de Colombia.
+def carro(nombre, L, W, H, cap, ruedas, radio, suv=False):
+    CV, CF = [], {'pintura': [], 'vidrio': [], 'llanta': [], 'rin': [], 'luces': [], 'traseras': [], 'negro': [], 'placa': []}
     def cv(x, y, z): CV.append((x, y, z)); return len(CV)
-    def extruir(m, perfil, an, dy=0.0):
-        n = len(perfil); iz = [cv(p[0], dy - an / 2, p[1]) for p in perfil]; de = [cv(p[0], dy + an / 2, p[1]) for p in perfil]
-        for i in range(1, n - 1): CF[m].append((iz[0], iz[i + 1], iz[i])); CF[m].append((de[0], de[i], de[i + 1]))
-        for i in range(n): j = (i + 1) % n; CF[m].append((iz[i], iz[j], de[j])); CF[m].append((iz[i], de[j], de[i]))
-    extruir('pintura', cuerpo, ancho)
-    extruir('vidrio', cabina, ancho - 0.22)
-    xs = [p[0] for p in cuerpo]; fr, tr = max(xs), min(xs)
-    for dy in (-ancho * 0.33, ancho * 0.33):  # faros adelante y luces traseras
-        extruir('luces', [(fr - 0.02, 0.62), (fr + 0.03, 0.62), (fr + 0.03, 0.74), (fr - 0.02, 0.74)], 0.36, dy)
-        extruir('luces', [(tr - 0.03, 0.72), (tr + 0.02, 0.72), (tr + 0.02, 0.84), (tr - 0.03, 0.84)], 0.36, dy)
+    def cara(m, a, b, c, d): CF[m].append((a, b, c)); CF[m].append((a, c, d))
+    # perfil: (x, z_abajo, z_cintura, z_techo, ancho_relativo) por estación, de atrás hacia adelante
+    zc = 0.78 if suv else 0.62; zt = H
+    est = [(-L / 2, 0.30, zc + 0.10, zc + 0.18, 0.92), (-L / 2 + 0.25, 0.25, zc + 0.16, zc + 0.20, 0.98), (cap[0], 0.22, zc + 0.20, zc + 0.24, 1.0),
+           (cap[1], 0.22, zc + 0.20, zt, 1.0), (cap[2], 0.22, zc + 0.20, zt, 1.0), (cap[3], 0.22, zc + 0.16, zc + 0.20, 1.0),
+           (L / 2 - 0.35, 0.24, zc + 0.04, zc + 0.08, 0.97), (L / 2, 0.30, zc - 0.10, zc - 0.04, 0.88)]
+    secciones = []
+    for x, z0, z1, z2, a in est:  # sección: bajo, costados, hombro (cintura) y techo, que se angosta arriba
+        w = W / 2 * a
+        pts = [(-w * 0.9, z0), (-w, z0 + 0.12), (-w, z1 - 0.05), (-w * 0.97, z1), (-w * 0.78, (z1 + z2) / 2), (-w * 0.6, z2),
+               (w * 0.6, z2), (w * 0.78, (z1 + z2) / 2), (w * 0.97, z1), (w, z1 - 0.05), (w, z0 + 0.12), (w * 0.9, z0)]
+        secciones.append([cv(x, y, z) for y, z in pts])
+    for s in range(len(secciones) - 1):
+        A, B = secciones[s], secciones[s + 1]; cab = 2 <= s <= 4
+        for i in range(len(A) - 1):
+            m = 'vidrio' if (s in (2, 4) and i in (4, 5, 6)) or (s == 3 and i in (4, 6)) else 'pintura'  # vidrio trasero, parabrisas y ventanas laterales; el techo es pintura
+            cara(m, A[i], A[i + 1], B[i + 1], B[i])
+    for S, inv in ((secciones[0], True), (secciones[-1], False)):  # tapas de atrás y adelante
+        for i in range(1, len(S) - 2): (CF['pintura'].append((S[0], S[i + 1], S[i])) if inv else CF['pintura'].append((S[0], S[i], S[i + 1])))
+    def caja(m, c, dx, dy, dz):
+        p = [cv(c[0] + sx * dx, c[1] + sy * dy, c[2] + sz * dz) for sz in (-1, 1) for sy in (-1, 1) for sx in (-1, 1)]
+        for f in ((0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)): cara(m, *(p[i] for i in f))
+    fr, tr = L / 2, -L / 2
+    for sy in (-W * 0.32, W * 0.32):
+        caja('luces', (fr - 0.02, sy, zc - 0.17), 0.04, 0.2, 0.05)          # faros
+        caja('traseras', (tr - 0.01, sy, zc + 0.12), 0.03, 0.2, 0.05)       # luces traseras
+    caja('negro', (fr + 0.02, 0, 0.42), 0.04, W * 0.46, 0.08)               # parachoques
+    caja('negro', (tr - 0.02, 0, 0.42), 0.04, W * 0.46, 0.08)
+    caja('placa', (tr - 0.04, 0, 0.55), 0.01, 0.17, 0.06)                  # placa amarilla
+    caja('placa', (fr + 0.05, 0, 0.36), 0.01, 0.17, 0.06)
+    for sy in (-1, 1): caja('negro', (cap[3] - 0.15, sy * (W / 2 + 0.08), zc + 0.24), 0.08, 0.06, 0.05)  # espejos
     for sx in ruedas:
-        for sy in (-ancho / 2 + 0.11, ancho / 2 - 0.11):
-            extruir('llanta', [(sx + math.cos(a / 16 * 2 * math.pi) * radio, radio + math.sin(a / 16 * 2 * math.pi) * radio) for a in range(16)], 0.24, sy)
+        for sy in (-1, 1):
+            yc = sy * (W / 2 - 0.12)
+            for m, r, an, sal in (('llanta', radio, 0.22, 0.0), ('rin', radio * 0.62, 0.05, 0.1)):
+                n = 18; aro = [(sx + math.cos(a / n * 2 * math.pi) * r, radio + math.sin(a / n * 2 * math.pi) * r) for a in range(n)]
+                y0, y1 = yc - an / 2 + sy * sal, yc + an / 2 + sy * sal
+                iz = [cv(p[0], y0, p[1]) for p in aro]; de = [cv(p[0], y1, p[1]) for p in aro]
+                for i in range(n):
+                    j = (i + 1) % n; cara(m, iz[i], iz[j], de[j], de[i])
+                for i in range(1, n - 1): CF[m].append((iz[0], iz[i + 1], iz[i])); CF[m].append((de[0], de[i], de[i + 1]))
     with open(os.path.join(OUT, nombre + '.obj'), 'w') as f:
         f.write('# REN3D - %s\n' % nombre)
         for p in CV: f.write('v %.3f %.3f %.3f\n' % p)
-        for p in CV: f.write('vt %.3f %.3f\n' % (p[0] / 4.5 + 0.5, p[2] / 1.8))
+        for p in CV: f.write('vt %.3f %.3f\n' % (p[0] / L + 0.5, p[2] / 2.0))
         f.write('g %s\n' % nombre)  # un solo grupo: una sola malla con varias ranuras de material
         for m, fs in CF.items():
             f.write('usemtl %s\n' % m)
             for t in fs: f.write('f %s\n' % ' '.join('%d/%d' % (c, c) for c in t))
-carro('sedan', [(-2.18, 0.30), (2.20, 0.30), (2.26, 0.48), (2.20, 0.70), (1.60, 0.84), (0.80, 0.92), (-1.40, 0.96), (-2.10, 0.92), (-2.26, 0.66)],
-      [(-1.36, 0.92), (-0.90, 1.38), (0.32, 1.40), (0.98, 0.92)], 1.78, (-1.40, 1.45), 0.32)
-carro('camioneta', [(-2.30, 0.40), (2.30, 0.40), (2.36, 0.62), (2.28, 0.94), (1.70, 1.06), (1.00, 1.10), (-2.20, 1.14), (-2.34, 0.80)],
-      [(-2.10, 1.12), (-1.95, 1.72), (0.62, 1.74), (1.12, 1.10)], 1.88, (-1.48, 1.52), 0.37)
+carro('sedan', 4.4, 1.76, 1.45, (-1.55, -0.95, 0.35, 0.95), (-1.42, 1.38), 0.31)
+carro('camioneta', 4.6, 1.86, 1.72, (-2.0, -1.85, 0.75, 1.25), (-1.45, 1.45), 0.36, suv=True)
 print('carros listos')

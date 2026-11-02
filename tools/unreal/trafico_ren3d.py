@@ -34,6 +34,11 @@ pint = [material('M_Pintura_%d' % i, c, 0.35, 0.4, clearcoat=True) for i, c in e
 vidrio = material('M_Vidrio', (0.005, 0.007, 0.009), 0.04, 0.0)
 llanta = material('M_Llanta', (0.012, 0.012, 0.012), 0.75)
 luces = material('M_Luces', (0.9, 0.85, 0.75), 0.3, 0.0, emis=(0.4, 0.35, 0.25))
+rin = material('M_Rin', (0.55, 0.56, 0.58), 0.25, 1.0)
+traseras = material('M_Traseras', (0.35, 0.0, 0.0), 0.3, 0.0, emis=(0.25, 0.0, 0.0))
+negro = material('M_Plastico', (0.02, 0.02, 0.02), 0.6)
+placa = material('M_Placa', (0.75, 0.55, 0.0), 0.5)
+PORRANURA = [('vidrio', vidrio), ('llanta', llanta), ('rin', rin), ('luces', luces), ('traseras', traseras), ('negro', negro), ('placa', placa)]
 mallas = {}
 for n in ('sedan', 'camioneta'):
     for o in importar(os.path.join(SRC, n + '.obj')):
@@ -42,7 +47,7 @@ for n in ('sedan', 'camioneta'):
         ranuras = {}
         for i, sm in enumerate(o.static_materials):
             s = str(sm.material_slot_name).lower(); ranuras[i] = s
-            o.set_material(i, vidrio if 'vidrio' in s else llanta if 'llanta' in s else luces if 'luces' in s else pint[0])
+            o.set_material(i, next((mm for nn, mm in PORRANURA if nn in s), pint[0]))
         EAL.save_loaded_asset(o); mallas[n] = (o, ranuras)
         log('%s: %d ranuras %s' % (n, len(ranuras), list(ranuras.values())))
 
@@ -80,12 +85,29 @@ for k, c in enumerate(T['carros']):
     for canal in ch[6:9]: canal.add_key(unreal.FrameNumber(0), 100.0)  # el OBJ entra en cm: x100 = metros reales
 EAL.save_loaded_asset(seq)
 log('secuencia Trafico: %d carros, %d cuadros' % (len(T['carros']), T['cuadros']))
-# actor que reproduce el tráfico solo, en bucle, al darle Play y en los renders
-sa = eas.spawn_actor_from_class(unreal.LevelSequenceActor, unreal.Vector(0, 0, 0)); sa.set_actor_label('TRAFICO')
-sa.set_sequence(seq)
-ps = sa.get_editor_property('playback_settings')
-ps.set_editor_property('auto_play', True)
-lc = ps.get_editor_property('loop_count'); lc.set_editor_property('value', -1); ps.set_editor_property('loop_count', lc)
-sa.set_editor_property('playback_settings', ps)
+# carros estacionados (calles locales): mismo sedán, en instancias, pintura al azar por instancia
+for a in eas.get_all_level_actors():
+    if a.get_actor_label() in ('TRAFICO', 'CARROS', 'ESTACIONADOS'): eas.destroy_actor(a)
+C = json.load(open(os.path.join(SRC, 'carros.json'), encoding='utf-8'))
+host = eas.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector(0, 0, 0)); host.set_actor_label('ESTACIONADOS')
+sds = unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
+raiz = sds.k2_gather_subobject_data_for_instance(host)[0]
+h, _ = sds.add_new_subobject(unreal.AddNewSubobjectParams(parent_handle=raiz, new_class=unreal.HierarchicalInstancedStaticMeshComponent, blueprint_context=None))
+hc = unreal.SubobjectDataBlueprintFunctionLibrary.get_object(unreal.SubobjectDataBlueprintFunctionLibrary.get_data(h))
+malla, ranuras = mallas['sedan']; hc.set_static_mesh(malla)
+pint_azar = unreal.load_asset('/Game/Kennedy/Suelo/M_Pintura')  # color al azar por instancia
+for i, s in ranuras.items():
+    if 'pintura' in s and pint_azar: hc.set_material(i, pint_azar)
+hc.add_instances([unreal.Transform(unreal.Vector(x * 100, -y * 100, (C['suelo'] + 0.1) * 100), unreal.Rotator(roll=0.0, pitch=0.0, yaw=-r), unreal.Vector(100, 100, 100)) for x, y, r, _ in C['carros']], False)
+log('estacionados: %d' % hc.get_instance_count())
+# el tráfico va como subsecuencia dentro de cada secuencia de cámara: así se mueve cuadro a cuadro en los renders y al reproducirlas
+for nombre in ('Giro', 'Oblicua', 'Calle', 'Arriba', 'Cerros'):
+    s = unreal.load_asset('/Game/Kennedy/%s.%s' % (nombre, nombre))
+    if not s: continue
+    for tr in list(s.get_tracks()):
+        if isinstance(tr, unreal.MovieSceneSubTrack): s.remove_track(tr)
+    st = s.add_track(unreal.MovieSceneSubTrack); sec = st.add_section(); sec.set_sequence(seq)
+    sec.set_range(s.get_playback_start(), max(s.get_playback_end(), 2) + 1)
+    EAL.save_loaded_asset(s); log('tráfico dentro de %s' % nombre)
 les.save_current_level()
 with open(os.path.join(PROY, 'Saved', 'trafico_ren3d.txt'), 'w', encoding='utf-8') as f: f.write('\n'.join(info))
