@@ -58,6 +58,13 @@ mats = {
     'parque': mat_textura('M_Parque', textura(TX + r'\textures\pasto_color.jpg'), textura(TX + r'\textures\pasto_normal.jpg', True), 0.95),
     'via': mat_textura('M_Via', textura(TX + r'\textures\via_color.jpg'), textura(TX + r'\textures\via_normal.jpg', True), 0.85),
     'anden': mat_textura('M_Anden', textura(TX + r'\textures\acera_color.jpg'), textura(TX + r'\textures\acera_normal.jpg', True), 0.8),
+    'piso': mat_textura('M_Piso', textura(TX + r'\textures\piso_color.jpg'), textura(TX + r'\textures\piso_normal.jpg', True), 0.9, (0.85, 0.83, 0.8)),
+    'plaza': mat_textura('M_Plaza', textura(TX + r'\textures\acera_color.jpg'), textura(TX + r'\textures\acera_normal.jpg', True), 0.85, (1.0, 0.95, 0.9)),
+    'parqueo': mat_textura('M_Parqueo', textura(TX + r'\textures\via_color.jpg'), textura(TX + r'\textures\via_normal.jpg', True), 0.85, (0.9, 0.9, 0.92)),
+    'tierra': mat_textura('M_Tierra', textura(P + 'BaseColor.jpg'), textura(P + 'Normal.png', True), 0.95, (0.75, 0.55, 0.38)),
+    'sintetica': mat_liso('M_Sintetica', (0.05, 0.22, 0.06), 0.7),
+    'cancha': mat_liso('M_Cancha', (0.06, 0.16, 0.28), 0.6),
+    'caucho': mat_liso('M_Caucho', (0.32, 0.07, 0.05), 0.85),
     'juncal': mat_textura('M_Juncal', textura(P + 'BaseColor.jpg'), textura(P + 'Normal.png', True), 0.95, (0.42, 0.45, 0.24)),  # pasto alto y juncos del humedal
     'agua': mat_liso('M_Agua', (0.02, 0.05, 0.06), 0.05, 0.0),
     'linea': mat_liso('M_Linea', (0.85, 0.82, 0.7), 0.6),
@@ -78,7 +85,7 @@ log('mallas: %s' % ', '.join(mallas))
 les.load_level('/Game/Kennedy/Kennedy')
 for a in eas.get_all_level_actors():
     if a.get_actor_label().startswith(('SUELO_', 'CARROS', 'RECORTE_')): eas.destroy_actor(a)
-for n in ('pasto', 'parque', 'juncal', 'agua', 'anden', 'via', 'linea'):
+for n in ('piso', 'pasto', 'parque', 'juncal', 'tierra', 'plaza', 'parqueo', 'sintetica', 'cancha', 'caucho', 'agua', 'anden', 'via', 'linea'):
     if n not in mallas: continue
     act = eas.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector(0, 0, 0)); act.static_mesh_component.set_static_mesh(mallas[n])
     act.set_actor_label('SUELO_' + n); act.set_actor_scale3d(unreal.Vector(100, 100, 100))

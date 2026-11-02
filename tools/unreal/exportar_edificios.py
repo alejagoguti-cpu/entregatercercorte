@@ -179,7 +179,7 @@ for i, t in enumerate(T):
     clave = (round(x), round(y))
     if clave in vistos: continue
     vistos.add(clave)
-    h = max(1.5, min(18.0, float(t[2] or 3) * (0.9 + hsh(i) * 0.2)))
+    h = max(3.5, min(18.0, float(t[2] or 3) * (0.9 + hsh(i) * 0.2)))  # mínimo 3,5 m: los de 1-2 m desaparecían desde el dron
     s = 1 if h < 5 else 0  # pequeños: island tree (copa compacta); medianos y grandes: jacarandá con copa más angosta
     wf = (0.95 + hsh(i * 5) * 0.2) if s else (0.6 + hsh(i * 5) * 0.2)
     arb.append([round(x, 2), round(y, 2), round(h, 2), round(hsh(i * 11) * 360, 1), round(wf, 3), s])

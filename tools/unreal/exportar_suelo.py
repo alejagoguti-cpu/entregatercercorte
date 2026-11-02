@@ -15,7 +15,7 @@ ZC = en(7437, 3271); RADIO = 1600.0; SUELO = 15.8
 def enZona(x, y, m=0): return (x - ZC[0]) ** 2 + (y - ZC[1]) ** 2 < (RADIO + m) ** 2
 rnd = random.Random(5)
 
-V, VT, F = [], [], {m: [] for m in ('pasto', 'parque', 'juncal', 'agua', 'via', 'anden', 'linea')}
+V, VT, F = [], [], {m: [] for m in ('piso', 'pasto', 'parque', 'juncal', 'tierra', 'plaza', 'parqueo', 'sintetica', 'cancha', 'caucho', 'agua', 'via', 'anden', 'linea')}
 def v(x, y, z): V.append((x, y, z)); return len(V)
 def vt(u, w): VT.append((u, w)); return len(VT)
 def tri(m, a, b, c): F[m].append((a, b, c))
@@ -68,9 +68,27 @@ def cinta(m, pts, ancho, z, desp=0.0, esc_u=4.0, esc_v=None):  # franja a lo lar
         if prev: tri(m, prev[0], prev[1], R_); tri(m, prev[0], R_, L_)
         prev = (L_, R_)
 
-# base: disco de pasto en toda la zona
+# base: piso duro (patios, antejardines y lotes de concreto) en toda la zona; el pasto va en los parques y en la ronda del humedal
 pts = [(ZC[0] + math.cos(a / 96 * 2 * math.pi) * (RADIO + 30), ZC[1] + math.sin(a / 96 * 2 * math.pi) * (RADIO + 30)) for a in range(96)]
-poligono('pasto', pts, SUELO - 0.05, 6.0)
+poligono('piso', pts, SUELO - 0.05, 4.0)
+def envolvente(P):  # casco convexo
+    P = sorted(set(P))
+    if len(P) < 3: return P
+    def cr(o, a, b): return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lo, hi = [], []
+    for p in P:
+        while len(lo) >= 2 and cr(lo[-2], lo[-1], p) <= 0: lo.pop()
+        lo.append(p)
+    for p in reversed(P):
+        while len(hi) >= 2 and cr(hi[-2], hi[-1], p) <= 0: hi.pop()
+        hi.append(p)
+    return lo[:-1] + hi[:-1]
+for w in json.load(open(os.path.join(RAIZ, 'data3d', 'water_bodies.json'), encoding='utf-8')):  # ronda de pasto alrededor de los humedales
+    if 'umedal' not in w.get('tipo', ''): continue
+    q = [en(*a) for a in w['pts']]
+    if not any(enZona(*a, 200) for a in q): continue
+    h = envolvente([(round(p[0], 1), round(p[1], 1)) for p in q]); cx = sum(p[0] for p in h) / len(h); cy = sum(p[1] for p in h) / len(h)
+    poligono('pasto', [(cx + (p[0] - cx) * (1 + 50 / max(1, math.dist(p, (cx, cy)))), cy + (p[1] - cy) * (1 + 50 / max(1, math.dist(p, (cx, cy))))) for p in h], SUELO - 0.02, 6.0)
 for p in json.load(open(os.path.join(RAIZ, 'data3d', 'parques.json'), encoding='utf-8')):
     q = [en(*a) for a in p['pts']]
     if any(enZona(*a) for a in q): poligono('parque', q[:-1] if q[0] == q[-1] else q, SUELO + 0.02, 5.0)
@@ -83,6 +101,22 @@ for w in json.load(open(os.path.join(RAIZ, 'data3d', 'water_bodies.json'), encod
         for cx, cy, r in charcos(q[:-1], w.get('nombre', '')): poligono('agua', [(cx + math.cos(a / 20 * 2 * math.pi) * r * (0.75 + 0.5 * rnd.random()), cy + math.sin(a / 20 * 2 * math.pi) * r * (0.75 + 0.5 * rnd.random())) for a in range(20)], SUELO + 0.05, 8.0)
     elif cerrado: poligono('agua', q[:-1], SUELO + 0.04, 8.0)
     else: cinta('agua', q, 6 if 'uebrada' in w.get('tipo', '') else 8, SUELO + 0.04, esc_u=8.0, esc_v=8.0)
+# superficies de OpenStreetMap (data3d/osm_suelo.json, tools/osm_suelo.py): canchas, parqueaderos, plazoletas, colegios, obras
+MXg2 = 111320 * math.cos(math.radians(4.63))
+def ll(lon, lat): return en((lon + 74.17) * MXg2 + 5193.24, (lat - 4.63) * 110540.0 + 2090.06)
+OSM = os.path.join(RAIZ, 'data3d', 'osm_suelo.json')
+CAPA = {'parking': ('parqueo', 0.030), 'plaza': ('plaza', 0.030), 'playground': ('caucho', 0.035), 'school': ('piso', 0.025), 'college': ('piso', 0.025),
+        'university': ('piso', 0.025), 'hospital': ('piso', 0.025), 'place_of_worship': ('plaza', 0.03), 'commercial': ('piso', 0.025), 'retail': ('piso', 0.025),
+        'industrial': ('piso', 0.025), 'construction': ('tierra', 0.025), 'brownfield': ('tierra', 0.025), 'railway': ('tierra', 0.025), 'sports_centre': ('plaza', 0.028), 'track': ('caucho', 0.034)}
+for s in (json.load(open(OSM, encoding='utf-8')) if os.path.exists(OSM) else []):
+    q = [ll(*p) for p in s['pts']]
+    if not any(enZona(*a) for a in q): continue
+    q = q[:-1] if math.dist(q[0], q[-1]) < 0.5 else q
+    if s['tipo'] == 'pitch':  # fútbol: sintética verde; baloncesto y múltiples: placa de concreto pintada; con borde blanco
+        m = 'sintetica' if s['deporte'] in ('soccer', '') and s['superficie'] not in ('concrete', 'asphalt') else 'cancha'
+        poligono(m, q, SUELO + 0.035, 6.0); cinta('linea', q + q[:1], 0.12, SUELO + 0.045, esc_u=1.0)
+    elif s['tipo'] in CAPA:
+        m, dz = CAPA[s['tipo']]; poligono(m, q, SUELO + dz, 4.0)
 ANCHO = {'major': 15.0, 'mid': 10.0, 'local': 6.5}
 CARROS_POR_M = {'major': 0.0, 'mid': 0.0, 'local': 1 / 60.0}  # quietos solo en las calles locales (estacionados); en las avenidas andan (trafico.json)
 N = json.load(open(os.path.join(RAIZ, 'data3d', 'net.json'), encoding='utf-8'))
