@@ -35,6 +35,7 @@ def triangular(poly):  # recorte de orejas (antihorario); el abanico desde el ce
             tris.append((idx[k - 1], idx[k], idx[(k + 1) % len(idx)])); idx.pop(k)
     if len(idx) == 3: tris.append(tuple(idx))
     return tris
+JUNCAL = False  # True: humedal como juncal con charcos; False (como lo prefiere la usuaria): el humedal con su agua completa
 def dentro(x, y, pts):
     c = False
     for i in range(len(pts)):
@@ -77,7 +78,7 @@ for w in json.load(open(os.path.join(RAIZ, 'data3d', 'water_bodies.json'), encod
     q = [en(*a) for a in w['pts']]
     if not any(enZona(*a) for a in q): continue
     cerrado = len(q) > 3 and math.dist(q[0], q[-1]) < 1
-    if cerrado and 'umedal' in w.get('tipo', ''):  # el humedal es casi todo pasto y juncos con charcos sueltos (videos de dron), no un lago
+    if cerrado and JUNCAL and 'umedal' in w.get('tipo', ''):  # el humedal es casi todo pasto y juncos con charcos sueltos (videos de dron), no un lago
         poligono('juncal', q[:-1], SUELO + 0.03, 5.0)
         for cx, cy, r in charcos(q[:-1], w.get('nombre', '')): poligono('agua', [(cx + math.cos(a / 20 * 2 * math.pi) * r * (0.75 + 0.5 * rnd.random()), cy + math.sin(a / 20 * 2 * math.pi) * r * (0.75 + 0.5 * rnd.random())) for a in range(20)], SUELO + 0.05, 8.0)
     elif cerrado: poligono('agua', q[:-1], SUELO + 0.04, 8.0)
