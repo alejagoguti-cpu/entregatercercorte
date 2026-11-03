@@ -1,4 +1,4 @@
-"""Agentes en Kennedy360: lleva a Unreal lo que calcula simular_agentes.py (Importar/agentes).
+﻿"""Agentes en Kennedy360: lleva a Unreal lo que calcula simular_agentes.py (Importar/agentes).
 
 Arma en /Game/Kennedy/Agentes:
 - Fauna (40 s): golondrinas, torcazas, aguililla, fochas, patos, garzas, abejas y custodios del humedal El Burro.
@@ -159,7 +159,10 @@ for esc_ in ('actual', 'propuesto', 'propuesto_apagon'):
     EAL.save_loaded_asset(seq); SEQ_AL[esc_] = seq; log('Alimentos_%s: %d nodos, fichas %s' % (esc_, nn, cuenta))
 
 # ---------------------------------------------------------------- cámaras con letreros y subsecuencias
-TRAF = unreal.load_asset('/Game/Kennedy/Trafico/Trafico')
+# agentes de calle (calles_ren3d.py) si ya existen; si no, el tráfico de velocidad constante. Ambos se repiten en secciones.
+_CALLES = unreal.load_asset('/Game/Kennedy/Calles/Calles')
+TRAF = _CALLES or unreal.load_asset('/Game/Kennedy/Trafico/Trafico')
+BUCLE_TRAF = int(_CALLES.get_playback_end()) if _CALLES else 720
 def subsecuencia(seq, sub, cuadros, bucle=None):
     st = seq.add_track(unreal.MovieSceneSubTrack); paso = bucle or cuadros; ini = 0
     while ini < cuadros:  # el tráfico dura 30 s: se repite en secciones seguidas para cubrir toda la toma
@@ -208,7 +211,7 @@ def camara(nombre, cuadros, trayecto, objetivo, focal, subs, letreros=(), planta
 
 FX, FY = FA['foco']
 camara('Cam_Fauna', CF, lambda t: (FX + 65 * math.cos(math.radians(-115 + 40 * t)), FY + 65 * math.sin(math.radians(-115 + 40 * t)), 15.0),
-       (FX, FY, 7.0), 30.0, [(seq_f, None)] + ([(TRAF, 720)] if TRAF else []))
+       (FX, FY, 7.0), 30.0, [(seq_f, None)] + ([(TRAF, BUCLE_TRAF)] if TRAF else []))
 nd = {n['tipo'] + ('' if n['tipo'] != 'humedal' else n['nombre']): n for n in NO['nodos']}
 ALR = RES['alimentos']
 def pct(e): return '%.0f %%' % (100 * ALR[e]['dependencia_volumen_ult30'])
@@ -232,7 +235,7 @@ def textos(e, tam, planta=False):
 OB = (-450.0, -480.0, 0.0)  # centro de interés entre Corabastos y El Burro
 for e, seq in SEQ_AL.items():
     C_ = int(seq.get_playback_end())
-    camara('Cam_%s_Oblicua' % e, C_, lambda t: (-2150 + 260 * t, -2350 - 120 * t, 1150.0), OB, 24.0, [(seq, None)] + ([(TRAF, 720)] if TRAF else []), textos(e, 46))
+    camara('Cam_%s_Oblicua' % e, C_, lambda t: (-2150 + 260 * t, -2350 - 120 * t, 1150.0), OB, 24.0, [(seq, None)] + ([(TRAF, BUCLE_TRAF)] if TRAF else []), textos(e, 46))
     camara('Cam_%s_Planta' % e, C_, lambda t: (-380.0, -280.0, 3300.0), (-380.0, -280.5, 0.0), 24.0, [(seq, None)], textos(e, 50, True), planta=True)
 
 # ---------------------------------------------------------------- configuraciones de render (Movie Render Queue)
