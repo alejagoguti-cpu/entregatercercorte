@@ -4,3 +4,5 @@ splatwork/sparse/
 splatwork/db.db
 splatwork/humedal.splat
 splatwork/__pycache__/
+
+tools/cache/

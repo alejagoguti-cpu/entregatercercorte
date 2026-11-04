@@ -26,7 +26,7 @@ Paneles PROPUESTA, CÁMARA y RESULTADOS dentro del simulador (guía del Corte II
 
 ## Kennedy 360 (giro fotorrealista, como las maquetas de Umbra)
 
-Web: https://anasoficasca-code.github.io/REN3D-realista/giro_render.html (el giro renderizado). La página `giro.html` ahora es el **recorrido 3D libre por toda Kennedy** (CesiumJS + malla fotorrealista de Google): se arrastra para moverse con el ángulo fijo, clic derecho o dos dedos para girar, rueda o pellizco para acercar, WASD/QE en teclado, minimapa con el límite de la localidad y lugares de OpenStreetMap (`data3d/kennedy.json`, generado con `python tools/kennedy_limite.py`).
+Web: https://anasoficasca-code.github.io/REN3D-realista/giro.html (el giro renderizado). La página `kennedy3d.html` es el **recorrido 3D libre por toda Kennedy** (CesiumJS + malla fotorrealista de Google): se arrastra para moverse con el ángulo fijo, clic derecho o dos dedos para girar, rueda o pellizco para acercar, WASD/QE en teclado, minimapa con el límite de la localidad y lugares de OpenStreetMap (`data3d/kennedy.json`, generado con `python tools/kennedy_limite.py`).
 
 - 72 fotogramas renderizados en **Unreal Engine 5.8** con **Cesium for Unreal 2.30** y la malla fotorrealista de Google (Cesium ion, asset 2275207): la ciudad, los techos y los cerros son reales. Sol de Bogotá a las 10:48 a. m., bruma y gradación de color.
 - La cámara gira alrededor del humedal El Burro (650 m de radio, 260 m de altura, lente de 20 mm), con el look de las maquetas de Umbra: sol de media mañana, saturación 1,22, sombras abiertas, imagen cálida y luminosa, bruma azulada solo a lo lejos.
