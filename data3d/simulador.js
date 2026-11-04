@@ -484,5 +484,12 @@ export function crearSimulador(ctx) {
     g.lineTo((a.length - 1) / 119 * w, h); g.lineTo(0, h); g.closePath(); g.fillStyle = 'rgba(0,212,255,.12)'; g.fill();
     g.fillStyle = 'rgba(232,234,237,.45)'; g.font = '18px "JetBrains Mono",monospace'; g.fillText('VEL MEDIA', 4, 18);
   }
-  return { update, render, setModo };
+  // saltar de agente (panel CÁMARA de propuesta.js): el n-ésimo carro más cercano al punto mirado
+  function seguirCercano(n) {
+    const tr = ctx.traf(), T3 = ctx.T3(); if (!tr || !tr.vis || !T3 || !tr.vis.n) return false;
+    const V = tr.vis, t = T3.orbit.target, L = [];
+    for (let i = 0; i < V.n; i++) L.push([Math.hypot(V.x[i] - t.x, V.z[i] - t.z), V.id[i]]);
+    L.sort((a, b) => a[0] - b[0]); seguir(L[(n || 0) % Math.min(25, L.length)][1]); return true;
+  }
+  return { update, render, setModo, seguirCercano, soltar: () => soltar(), siguiendo: () => !!S.track };
 }

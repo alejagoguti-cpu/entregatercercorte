@@ -13,6 +13,17 @@ La maqueta abre como simulador de vigilancia y tráfico (`data3d/simulador.js`),
 - **Celular:** el botón PANEL abre los controles como hoja inferior.
 - **Vista fotorrealista (por defecto):** el mundo es la malla 3D de Google completa (edificios, árboles y suelo reales, con su profundidad), como Google Earth. Encima solo van los carros, peatones y aves de la simulación; el suelo de la malla se calibra midiendo su altura bajo los carros y se vuelve a medir al ir a otra zona. El botón **Maqueta** (o `?maqueta=1`) vuelve a la maqueta propia.
 
+### Propuesta: descentralizar Corabastos (`data3d/propuesta.js`)
+
+Paneles PROPUESTA, CÁMARA y RESULTADOS dentro del simulador (guía del Corte III, §4):
+
+- **Variables que se mueven en vivo:** mercados de barrio (0-20), huertas comunitarias (0-30), área por huerta, % de compra directa a productores, distancia que la gente camina al mercado, precio del mercado frente a Corabastos, clima (normal, lluvia, sequía) y cerrar Corabastos.
+- **Escenarios:** Actual, Propuesta y Choque (Corabastos cerrada con sequía).
+- **Agentes sobre las vías reales:** camiones de Corabastos, furgones de productores, bicicargas de las huertas y compradores a pie. Los compradores comparan precio, transporte y confianza; si el mercado no les cumple, la confianza baja. Corabastos baja su precio cuando pierde volumen.
+- **Resultados:** dependencia de Corabastos frente al escenario actual, kg de huertas y de compra directa, camiones por día, tiendas a pie de un mercado, distancia de abasto, demanda sin cubrir, precio y confianza.
+- **Cámara tipo *Everything*:** salta de un agente a otro (carro, camión, furgón, bicicarga, comprador, peatón; tecla Tab) y cambia de escala (Agente, Barrio, Kennedy).
+- Datos: `data3d/propuesta.json`, generado con `python tools/propuesta_datos.py` a partir de los nodos del modelo de agentes de Unreal y de los parques. Las cifras sin fuente están marcadas [SUP] en el código.
+
 ## Kennedy 360 (giro fotorrealista, como las maquetas de Umbra)
 
 Web: https://anasoficasca-code.github.io/REN3D-realista/giro.html

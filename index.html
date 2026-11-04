@@ -592,6 +592,7 @@ let mode = 'todo';
 let T3 = null, tourT = null;
 let SPLAT = null;
 let PAJARO = null; // modo pájaro (juego de vuelo y realidad virtual), se crea al pulsar el botón
+let PROP = null; // propuesta: mercados de barrio y huertas (data3d/propuesta.js)
 let SIM = null; // simulador tipo God's Eye (data3d/simulador.js): HUD táctico, sensores, detección, seguimiento y panel de tráfico
 const SPLAT_URL = 'data3d/humedal-v3.splat';
 const SPLAT_HD = 'data3d/humedal-hd.splat';
@@ -779,6 +780,7 @@ function flight(ms) {
     T3.sun.target.position.copy(o.target);
     actualizarMalla(T3, dt);
     if (SIM) SIM.update(dt); // HUD, detección y seguimiento tipo God's Eye
+    if (PROP) PROP.update(dt); // propuesta: mercados de barrio, huertas y abastecimiento (data3d/propuesta.js)
     if (!(SIM && SIM.render(cam))) { if (T3.composer) T3.composer.render(); else T3.renderer.render(T3.scene, cam); } // con un sensor (CRT, NVG, FLIR) dibuja el simulador; si no, render con oclusión ambiental
     requestAnimationFrame(flight); return;
   }
@@ -3019,12 +3021,19 @@ $('b-hd').onclick = async () => {
   }
 };
 
-import('./data3d/simulador.js?v=5').then(m => {
+import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({
     T3: () => T3, traf: () => TRAF, peat: () => PEAT, pajaro: () => PAJARO, say, movil: MOVIL,
     mundoALL: (x, z) => dataToLL(x + LC.x, LC.y - z), // [lng, lat] del punto del mundo 3D
     sectores: POIS.map(p => { const L = poiLocal(p), w = lw(L[0], L[1]); return { n: p.n, x: w[0], z: w[1] }; })
   });
+  // propuesta (descentralizar Corabastos): espera la red de vías y el panel del simulador
+  const datos = fetch('data3d/propuesta.json').then(r => r.json());
+  const mod = import('./data3d/propuesta.js?v=1');
+  const listo = () => T3 && T3.net && document.querySelector('#gevUI .g-left') ? Promise.resolve() : new Promise(r => setTimeout(() => r(listo()), 400));
+  Promise.all([datos, mod, listo()]).then(([d, pm]) => {
+    PROP = pm.crearPropuesta({ T3: () => T3, traf: () => TRAF, peat: () => PEAT, sim: SIM, lw, say, datos: d });
+  }).catch(e => console.warn('propuesta:', e));
 }).catch(e => console.warn('simulador:', e));
 addEventListener('resize', () => { try { if (T3) { T3.camera.aspect = innerWidth / innerHeight; T3.camera.updateProjectionMatrix(); T3.renderer.setSize(innerWidth, innerHeight); } } catch (e) {} });
 </script>
