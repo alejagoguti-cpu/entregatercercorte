@@ -3027,7 +3027,7 @@ $('b-hd').onclick = async () => {
 
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
-  Promise.all([import('./data3d/giro_sim.js?v=3'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
+  Promise.all([import('./data3d/giro_sim.js?v=4'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
 } else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({
     T3: () => T3, traf: () => TRAF, peat: () => PEAT, pajaro: () => PAJARO, say, movil: MOVIL,

@@ -457,6 +457,16 @@ export async function iniciarSimulacion(cfg = {}) {
       g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, W, Hh); etiquetas();
       return activos;
     };
+    // botones de cámara: ángulo (bajo, oblicuo, planta), girar y acercar, alrededor del punto que se mira
+    izq.insertAdjacentHTML('afterbegin', `<div class="gs-sub" style="margin-top:0">ÁNGULO DE VISIÓN <span>arrastra para girar</span></div>
+      <div class="gs-fila gs-fila3" id="gs-ang"><button data-a="14">Bajo</button><button data-a="38">Oblicuo</button><button data-a="86">Planta</button></div>
+      <div class="gs-fila"><button data-g="-45" title="Girar a la izquierda">⟲</button><button data-g="45" title="Girar a la derecha">⟳</button><button data-z="0.6" title="Acercar">＋</button><button data-z="1.6" title="Alejar">－</button></div>
+      <div style="height:10px"></div>`);
+    const camara = (fn) => { const c = T3.camera.position, t = T3.orbit.target.clone(), v = c.clone().sub(t); let r = v.length(), az = Math.atan2(v.x, v.z), el = Math.asin(Math.max(-1, Math.min(1, v.y / r))); [r, az, el] = fn(r, az, el); const p1 = new THREE.Vector3(t.x + r * Math.cos(el) * Math.sin(az), t.y + r * Math.sin(el), t.z + r * Math.cos(el) * Math.cos(az)); T3.anim = { t: 0, dur: 0.9, p0: c.clone(), p1, c0: t.clone(), c1: t.clone() }; };
+    izq.querySelectorAll('[data-a]').forEach(b => b.onclick = () => camara((r, az) => [r, az, +b.dataset.a * Math.PI / 180]));
+    izq.querySelectorAll('[data-g]').forEach(b => b.onclick = () => camara((r, az, el) => [r, az + +b.dataset.g * Math.PI / 180, el]));
+    izq.querySelectorAll('[data-z]').forEach(b => b.onclick = () => camara((r, az, el) => [Math.max(40, Math.min(6000, r * +b.dataset.z)), az, el]));
+    if (cfg.say) setTimeout(() => cfg.say('Arrastra para girar · clic derecho o dos dedos para desplazarte · rueda para acercar · W A S D para avanzar', 9000), 3500);
     // cámara inicial: la misma del giro (dron a 260 m, 650 m al norte de El Burro), luego se mueve libre
     T3.anim = { t: 0, dur: 2.2, p0: T3.camera.position.clone(), p1: new THREE.Vector3(OX, 300, OZ - 720), c0: T3.orbit.target.clone(), c1: new THREE.Vector3(OX, 0, OZ) };
   }
