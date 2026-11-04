@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Kennedy 3D</title>
+<meta name="description" content="Recorrido 3D libre por toda la localidad de Kennedy (Bogotá) sobre la malla fotorrealista de Google">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.124.0/Build/Cesium/Widgets/widgets.css">
+<style>
+  :root{--fondo:#060b12;--panel:rgba(8,16,26,.74);--borde:rgba(125,211,252,.22);--texto:#e2f3ff;--suave:#94a3b8;--acento:#7dd3fc;--verde:#34d399}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--fondo);color:var(--texto);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+  #mapa{position:fixed;inset:0;cursor:grab;touch-action:none}
+  #mapa.arrastrando{cursor:grabbing}
+  .cesium-viewer-bottom{left:10px!important;bottom:4px!important}
+  .cesium-credit-textContainer,.cesium-credit-expand-link{font-size:10px!important}
+  .ic{width:18px;height:18px;flex:none}
+  /* portada */
+  #carga{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:var(--fondo);transition:opacity .8s,visibility .8s}
+  #carga.fuera{opacity:0;visibility:hidden}
+  #carga .bg{position:absolute;inset:-10%;background:radial-gradient(55% 45% at 72% 28%,rgba(56,189,248,.2),transparent 70%),radial-gradient(45% 40% at 18% 78%,rgba(52,211,153,.15),transparent 70%);animation:deriva 16s ease-in-out infinite alternate}
+  #carga .tarjeta{position:relative;width:min(420px,calc(100vw - 32px));padding:26px 24px 22px;border-radius:18px;background:rgba(10,18,30,.66);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid var(--borde);box-shadow:0 30px 80px rgba(0,0,0,.55);animation:entra .8s cubic-bezier(.2,.7,.2,1) both}
+  .marca{display:flex;align-items:center;gap:10px;color:var(--acento);font-size:11px;font-weight:700;letter-spacing:.32em;text-transform:uppercase}
+  .marca .ic{width:22px;height:22px}
+  #carga h1{margin:14px 0 4px;font-size:32px;line-height:1.05;font-weight:800;color:#f1f7fd}
+  #carga h1 span{background:linear-gradient(100deg,#7dd3fc,#34d399);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #carga p{color:var(--suave);font-size:13px;margin-bottom:18px}
+  .barra{height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+  .barra i{display:block;height:100%;width:4%;background:linear-gradient(90deg,#38bdf8,#34d399);transition:width .4s}
+  #cargaTxt{margin-top:10px;font-size:12px;color:var(--acento)}
+  @keyframes deriva{to{transform:translate3d(-3%,2%,0) scale(1.06)}}
+  @keyframes entra{from{opacity:0;transform:translateY(14px)}}
+  /* interfaz */
+  .chip{position:fixed;z-index:10;display:flex;align-items:center;gap:10px;padding:9px 13px;border-radius:12px;background:var(--panel);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--borde)}
+  #titulo{top:14px;left:14px}
+  #titulo b{font-size:13px;letter-spacing:.04em}
+  #titulo small{display:block;font-size:11px;color:var(--suave);margin-top:2px}
+  #barraInf{position:fixed;z-index:10;left:50%;bottom:max(26px,calc(env(safe-area-inset-bottom) + 14px));transform:translateX(-50%);display:flex;gap:8px;align-items:center}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 16px;border:none;border-radius:12px;background:var(--panel);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--texto);font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;box-shadow:inset 0 0 0 1px var(--borde);transition:background .15s;text-decoration:none;white-space:nowrap}
+  .btn:hover{background:rgba(14,40,64,.88)}
+  .btn.redondo{width:46px;padding:0}
+  .btn.on{color:#04121c;background:linear-gradient(100deg,#bae6fd,#7dd3fc);box-shadow:none}
+  .btn.principal{color:#04121c;background:linear-gradient(100deg,#7dd3fc,#34d399);box-shadow:none}
+  /* lugares y minimapa */
+  #lado{position:fixed;z-index:10;right:14px;top:14px;width:236px;display:flex;flex-direction:column;gap:8px}
+  .pan{padding:10px;border-radius:14px;background:var(--panel);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--borde)}
+  .pan h3{font-size:10px;letter-spacing:.24em;color:var(--suave);font-weight:700;margin:0 2px 8px;display:flex;justify-content:space-between}
+  .pan h3 em{font-style:normal;color:var(--acento);letter-spacing:.06em}
+  #mini{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
+  #lugares{display:flex;flex-direction:column;gap:3px;max-height:calc(100vh - 420px);overflow:auto;scrollbar-width:none}
+  #lugares::-webkit-scrollbar{display:none}
+  #lugares button{display:flex;align-items:center;gap:8px;text-align:left;padding:7px 8px;border:none;border-radius:8px;background:rgba(255,255,255,.04);color:var(--texto);font:500 12px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;cursor:pointer}
+  #lugares button:hover{background:rgba(125,211,252,.14)}
+  #lugares button i{width:7px;height:7px;border-radius:50%;background:var(--verde);flex:none}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+  .seg button{height:32px;border:none;border-radius:8px;background:rgba(255,255,255,.05);color:var(--suave);font:700 10px system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+  .seg button.on{background:var(--acento);color:#04121c}
+  #ayuda{position:fixed;z-index:10;left:50%;bottom:96px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:var(--panel);font-size:12px;color:#cfe7f7;opacity:0;transition:opacity .6s;pointer-events:none;white-space:nowrap}
+  #ayuda.on{opacity:1}
+  /* marcadores */
+  #marcas{position:fixed;inset:0;z-index:8;pointer-events:none;overflow:hidden}
+  .pin{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;will-change:transform}
+  .pin .et{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:10px;background:rgba(8,16,26,.82);border:1px solid var(--borde);font-size:12px;font-weight:600;white-space:nowrap;pointer-events:auto;cursor:pointer}
+  .pin .et i{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 0 4px rgba(52,211,153,.2)}
+  .pin .palo{width:1px;height:30px;background:linear-gradient(var(--acento),transparent)}
+  .pin.oculto{display:none}
+  #ficha{position:fixed;z-index:12;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:min(360px,calc(100vw - 32px));padding:18px;border-radius:16px;background:rgba(10,18,30,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--borde);opacity:0;pointer-events:none;transition:.25s}
+  #ficha.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  #ficha h2{font-size:18px;margin-bottom:6px;padding-right:36px}
+  #ficha p{font-size:13px;color:var(--suave);line-height:1.5}
+  #ficha .cerrar{position:absolute;right:10px;top:10px;width:30px;height:30px}
+  #ficha .ir{margin-top:14px;height:40px;width:100%}
+  @media(max-width:760px){
+    #titulo small{display:none}
+    .btn{height:42px;padding:0 12px;font-size:11px;letter-spacing:.06em}.btn.redondo{width:42px}.btn .txt{display:none}
+    #lado{top:auto;right:10px;left:10px;width:auto;bottom:calc(max(26px,calc(env(safe-area-inset-bottom) + 14px)) + 52px);flex-direction:row;align-items:flex-end;pointer-events:none}
+    #lado .pan{pointer-events:auto}
+    #pMini{width:132px;flex:none;padding:7px}
+    #pMini h3{display:none}
+    #pLug{flex:1;min-width:0;max-height:40vh}
+    #pLug.cerrado #lugares,#pLug.cerrado .seg{display:none}
+    #lugares{max-height:28vh}
+    #ayuda{bottom:auto;top:66px;font-size:11px}
+  }
+  @media(min-width:761px){#pLug h3 button{display:none}}
+</style>
+</head>
+<body>
+<div id="mapa"></div>
+<div id="marcas"></div>
+
+<div id="carga">
+  <div class="bg"></div>
+  <div class="tarjeta">
+    <div class="marca"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><span>REN3D</span></div>
+    <h1>Kennedy <span>3D</span></h1>
+    <p>Recorre toda la localidad de Kennedy · Bogotá</p>
+    <div class="barra"><i id="cargaBarra"></i></div>
+    <div id="cargaTxt">Cargando la ciudad en 3D…</div>
+  </div>
+</div>
+
+<div class="chip" id="titulo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--acento)"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><div><b>Kennedy 3D</b><small id="donde">Localidad de Kennedy · Bogotá</small></div></div>
+
+<div id="lado">
+  <div class="pan" id="pMini"><h3>KENNEDY <em id="rumbo">N</em></h3><svg id="mini" viewBox="0 0 220 170" aria-label="Minimapa de Kennedy: toca para ir"></svg></div>
+  <div class="pan cerrado" id="pLug"><h3>LUGARES <button class="btn" id="bLug" style="height:22px;padding:0 8px;font-size:9px">Ver</button></h3>
+    <div class="seg" id="angulo" style="margin-bottom:8px"><button data-p="-22">Bajo</button><button data-p="-38" class="on">Ángulo</button><button data-p="-88">Planta</button></div>
+    <div id="lugares"></div>
+  </div>
+</div>
+
+<div id="barraInf">
+  <button class="btn redondo" id="bIzq" aria-label="Girar a la izquierda"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+  <button class="btn" id="bAuto" aria-label="Giro automático"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg><span class="txt">Girar</span></button>
+  <button class="btn redondo" id="bDer" aria-label="Girar a la derecha"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+  <button class="btn redondo" id="bMenos" aria-label="Alejar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+  <button class="btn redondo" id="bMas" aria-label="Acercar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <a class="btn" href="./giro_render.html" title="Giro renderizado en Unreal alrededor del humedal El Burro"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 15 5-5 4 4 3-3 6 6"/></svg><span class="txt">Render</span></a>
+  <a class="btn principal" href="./index.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><span class="txt">Maqueta</span></a>
+</div>
+<div id="ayuda"><span id="ayudaT">Arrastra para moverte · clic derecho o dos dedos para girar · rueda para acercar</span></div>
+<div id="ficha"><button class="btn redondo cerrar" id="fCerrar" aria-label="Cerrar">✕</button><h2 id="fTit"></h2><p id="fTxt"></p><button class="btn principal ir" id="fIr">Ir allá</button></div>
+
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.124.0/Build/Cesium/Cesium.js"></script>
+<script>
+(async function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const GKEY = 'AIzaSyCF2MXjc0DYRFrHk7j_BCyxVpWOdYqDIC4'; // la misma llave de la maqueta (index.html)
+  const MOVIL = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+  const progreso = (p, t) => { $('cargaBarra').style.width = Math.max(4, p * 100) + '%'; if (t) $('cargaTxt').textContent = t; };
+  const K = await (await fetch('data3d/kennedy.json')).json(); // límite de la localidad y lugares (OpenStreetMap)
+  progreso(0.15, 'Preparando el visor…');
+
+  // ---- límites de la localidad (para no salirse y para el minimapa) ----
+  const LON = K.limite.map(p => p[0]), LAT = K.limite.map(p => p[1]);
+  const B = { w: Math.min(...LON), e: Math.max(...LON), s: Math.min(...LAT), n: Math.max(...LAT) };
+  const C0 = { lng: (B.w + B.e) / 2, lat: (B.s + B.n) / 2 };
+  const MX = 111320 * Math.cos(C0.lat * Math.PI / 180), MY = 110540;
+
+  // ---- visor: solo la malla fotorrealista de Google (trae terreno, edificios y árboles) ----
+  const viewer = new Cesium.Viewer('mapa', {
+    globe: false, baseLayer: false, baseLayerPicker: false, geocoder: false, homeButton: false, sceneModePicker: false,
+    navigationHelpButton: false, animation: false, timeline: false, fullscreenButton: false, infoBox: false, selectionIndicator: false,
+    requestRenderMode: false, msaaSamples: MOVIL ? 1 : 4
+  });
+  const scene = viewer.scene, cam = viewer.camera;
+  scene.skyAtmosphere.show = true; scene.fog.enabled = true; scene.fog.density = 0.00018;
+  viewer.clock.currentTime = Cesium.JulianDate.fromIso8601('2026-11-04T15:48:00Z'); viewer.clock.shouldAnimate = false; // 10:48 a. m. en Bogotá
+  viewer.resolutionScale = Math.min(devicePixelRatio || 1, MOVIL ? 1.25 : 1.5);
+  const ctl = scene.screenSpaceCameraController; // la cámara la manejamos nosotros: ángulo fijo, nos movemos por el territorio
+  ctl.enableRotate = ctl.enableTranslate = ctl.enableZoom = ctl.enableTilt = ctl.enableLook = false;
+
+  let tiles = null;
+  try {
+    tiles = await Cesium.Cesium3DTileset.fromUrl('https://tile.googleapis.com/v1/3dtiles/root.json?key=' + GKEY, { showCreditsOnScreen: true, maximumScreenSpaceError: MOVIL ? 24 : 12 });
+    scene.primitives.add(tiles);
+  } catch (e) { progreso(1, 'No cargó la malla 3D de Google: ' + (e && e.message || e)); return; }
+  // look tipo maqueta (como el render de Unreal): más saturación, imagen cálida y viñeta suave
+  scene.postProcessStages.add(new Cesium.PostProcessStage({ fragmentShader: `
+    uniform sampler2D colorTexture; in vec2 v_textureCoordinates;
+    void main(){ vec3 c = texture(colorTexture, v_textureCoordinates).rgb; float l = dot(c, vec3(0.299, 0.587, 0.114));
+      c = mix(vec3(l), c, 1.22); c *= vec3(1.045, 1.0, 0.94); c = (c - 0.5) * 1.06 + 0.52;
+      vec2 d = v_textureCoordinates - 0.5; c *= 1.0 - dot(d, d) * 0.5; out_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }` }));
+
+  // ---- borde de la localidad pegado al suelo ----
+  viewer.entities.add({ polyline: { positions: Cesium.Cartesian3.fromDegreesArray(K.limite.flat()), clampToGround: true, width: 5,
+    classificationType: Cesium.ClassificationType.CESIUM_3D_TILE, material: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.25, color: Cesium.Color.fromCssColorString('#7dd3fc').withAlpha(0.95) }) } });
+
+  // ---- estado de la cámara: punto mirado en el suelo, distancia, rumbo y ángulo ----
+  let SUELO = 2565; // altura elipsoidal aproximada del suelo de Kennedy; se mide sobre la malla
+  const meta = { lng: -74.1535, lat: 4.6290, dist: 2400, rumbo: 20, ang: -38 }, est = { ...meta };
+  let auto = false;
+  function dentro(p) { p.lng = Math.min(B.e + 0.004, Math.max(B.w - 0.004, p.lng)); p.lat = Math.min(B.n + 0.004, Math.max(B.s - 0.004, p.lat)); p.dist = Math.min(9000, Math.max(70, p.dist)); }
+  function ponerCamara() {
+    const a = est.ang * Math.PI / 180, h = est.rumbo * Math.PI / 180, atras = Math.cos(a) * est.dist, alto = -Math.sin(a) * est.dist;
+    const lng = est.lng - Math.sin(h) * atras / MX, lat = est.lat - Math.cos(h) * atras / MY;
+    cam.setView({ destination: Cesium.Cartesian3.fromDegrees(lng, lat, SUELO + alto), orientation: { heading: h, pitch: a, roll: 0 } });
+  }
+  function mover(dxPx, dyPx) { // arrastrar: el suelo sigue al dedo
+    const m = est.dist / innerHeight * 1.25, h = meta.rumbo * Math.PI / 180;
+    const der = -dxPx * m, fre = dyPx * m / Math.max(0.35, Math.sin(-meta.ang * Math.PI / 180));
+    meta.lng += (Math.cos(h) * der + Math.sin(h) * fre) / MX; meta.lat += (-Math.sin(h) * der + Math.cos(h) * fre) / MY; dentro(meta);
+  }
+  function irA(lng, lat, dist) { meta.lng = lng; meta.lat = lat; if (dist) meta.dist = dist; dentro(meta); auto = false; $('bAuto').classList.remove('on'); }
+
+  // ---- interacción: ratón, dedos y teclado ----
+  const el = $('mapa'), punteros = new Map(); let gesto = null;
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  el.addEventListener('pointerdown', e => {
+    el.setPointerCapture(e.pointerId); punteros.set(e.pointerId, { x: e.clientX, y: e.clientY, b: e.button });
+    el.classList.add('arrastrando'); auto = false; $('bAuto').classList.remove('on'); $('ayuda').classList.remove('on');
+    gesto = null;
+  });
+  el.addEventListener('pointermove', e => {
+    const p = punteros.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    if (punteros.size === 1) {
+      if (p.b === 2 || e.shiftKey) { meta.rumbo -= dx * 0.25; meta.ang = Math.max(-89, Math.min(-12, meta.ang - dy * 0.15)); } // girar e inclinar
+      else mover(dx, dy);
+    } else if (punteros.size === 2) {
+      const [a, b] = [...punteros.values()], antes = { d: Math.hypot(a.x - b.x, a.y - b.y), t: Math.atan2(b.y - a.y, b.x - a.x), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+      p.x = e.clientX; p.y = e.clientY;
+      const [a2, b2] = [...punteros.values()], d2 = Math.hypot(a2.x - b2.x, a2.y - b2.y), t2 = Math.atan2(b2.y - a2.y, b2.x - a2.x);
+      if (antes.d > 10) meta.dist *= antes.d / Math.max(10, d2);
+      meta.rumbo -= (t2 - antes.t) * 180 / Math.PI;
+      mover((a2.x + b2.x) / 2 - antes.cx, (a2.y + b2.y) / 2 - antes.cy); dentro(meta); return;
+    }
+    p.x = e.clientX; p.y = e.clientY;
+  });
+  const fin = e => { punteros.delete(e.pointerId); if (!punteros.size) el.classList.remove('arrastrando'); };
+  el.addEventListener('pointerup', fin); el.addEventListener('pointercancel', fin);
+  el.addEventListener('wheel', e => { e.preventDefault(); meta.dist *= Math.exp(e.deltaY * 0.0012); dentro(meta); }, { passive: false });
+  const teclas = new Set();
+  addEventListener('keydown', e => { teclas.add(e.code); if (e.key === 'Escape') $('ficha').classList.remove('on'); });
+  addEventListener('keyup', e => teclas.delete(e.code));
+  $('bIzq').onclick = () => { meta.rumbo -= 45; }; $('bDer').onclick = () => { meta.rumbo += 45; };
+  $('bMas').onclick = () => { meta.dist /= 1.6; dentro(meta); }; $('bMenos').onclick = () => { meta.dist *= 1.6; dentro(meta); };
+  $('bAuto').onclick = () => { auto = !auto; $('bAuto').classList.toggle('on', auto); };
+  $('bLug').onclick = () => { const c = $('pLug').classList.toggle('cerrado'); $('bLug').textContent = c ? 'Ver' : 'Ocultar'; };
+  document.querySelectorAll('#angulo button').forEach(b => b.onclick = () => { meta.ang = +b.dataset.p; document.querySelectorAll('#angulo button').forEach(x => x.classList.toggle('on', x === b)); });
+  $('fCerrar').onclick = () => $('ficha').classList.remove('on');
+
+  // ---- lugares: lista, marcadores y ficha ----
+  let elegido = null;
+  const abrirFicha = (l) => { elegido = l; $('fTit').textContent = l.n; $('fTxt').textContent = l.d; $('ficha').classList.add('on'); };
+  $('fIr').onclick = () => { if (elegido) irA(elegido.lng, elegido.lat, 700); $('ficha').classList.remove('on'); };
+  K.lugares.forEach(l => {
+    const b = document.createElement('button'); b.innerHTML = '<i></i>' + l.n; b.onclick = () => { irA(l.lng, l.lat, 700); if (MOVIL) $('pLug').classList.add('cerrado'); };
+    $('lugares').appendChild(b);
+    const d = document.createElement('div'); d.className = 'pin oculto'; d.innerHTML = '<div class="et"><i></i>' + l.n + '</div><div class="palo"></div>';
+    d.querySelector('.et').onclick = () => abrirFicha(l); $('marcas').appendChild(d); l.el = d;
+  });
+  const w2s = Cesium.SceneTransforms.worldToWindowCoordinates || Cesium.SceneTransforms.wgs84ToWindowCoordinates;
+  const tmp = new Cesium.Cartesian2();
+  function marcas() {
+    const pos = cam.positionWC, n = Cesium.Cartesian3.normalize(pos, new Cesium.Cartesian3());
+    for (const l of K.lugares) {
+      const w = Cesium.Cartesian3.fromDegrees(l.lng, l.lat, SUELO + 25), r = w2s(scene, w, tmp);
+      const dist = Cesium.Cartesian3.distance(pos, w), delante = Cesium.Cartesian3.dot(Cesium.Cartesian3.subtract(w, pos, new Cesium.Cartesian3()), cam.directionWC) > 0;
+      const ok = r && delante && dist < 7000 && r.x > 10 && r.x < innerWidth - 10 && r.y > 70 && r.y < innerHeight - 70;
+      l.el.classList.toggle('oculto', !ok);
+      if (ok) { const bb = l.el.offsetWidth; l.el.style.transform = `translate(${r.x - bb / 2}px,${r.y - l.el.offsetHeight}px)`; l.el.style.opacity = dist > 4500 ? 0.6 : 1; }
+    }
+  }
+
+  // ---- minimapa con el borde de la localidad y la vista actual ----
+  const mini = $('mini'), MW = 220, MH = 170, esc = Math.min((MW - 16) / ((B.e - B.w) * MX), (MH - 16) / ((B.n - B.s) * MY));
+  const mx = (lng) => 8 + (lng - B.w) * MX * esc + ((MW - 16) - (B.e - B.w) * MX * esc) / 2, my = (lat) => 8 + (B.n - lat) * MY * esc + ((MH - 16) - (B.n - B.s) * MY * esc) / 2;
+  mini.innerHTML = `<path d="M${K.limite.map(p => mx(p[0]).toFixed(1) + ' ' + my(p[1]).toFixed(1)).join('L')}Z" fill="rgba(125,211,252,.10)" stroke="#7dd3fc" stroke-width="1.3"/>` +
+    K.lugares.map(l => `<circle cx="${mx(l.lng).toFixed(1)}" cy="${my(l.lat).toFixed(1)}" r="2.2" fill="#34d399"/>`).join('') +
+    `<g id="miniCam"><path d="M0 0 L-16 -30 L16 -30 Z" fill="rgba(125,211,252,.28)"/><circle r="4" fill="#fff" stroke="#0ea5e9" stroke-width="2"/></g>`;
+  const miniIr = (e) => { const r = mini.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * MW, y = (e.clientY - r.top) / r.height * MH;
+    const off = ((MW - 16) - (B.e - B.w) * MX * esc) / 2, offy = ((MH - 16) - (B.n - B.s) * MY * esc) / 2;
+    irA(B.w + (x - 8 - off) / esc / MX, B.n - (y - 8 - offy) / esc / MY); };
+  mini.addEventListener('pointerdown', e => { e.stopPropagation(); miniIr(e); mini.setPointerCapture(e.pointerId); mini.onpointermove = miniIr; });
+  mini.addEventListener('pointerup', () => { mini.onpointermove = null; });
+
+  // ---- bucle: suavizado, teclado, giro automático, altura del suelo y marcadores ----
+  const RUMBOS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+  let tSuelo = 0, tDonde = 0, ultimo = performance.now();
+  viewer.scene.preRender.addEventListener(() => {
+    const ahora = performance.now(), dt = Math.min(0.1, (ahora - ultimo) / 1000); ultimo = ahora;
+    const v = (teclas.has('ShiftLeft') ? 3 : 1) * 380 * dt;
+    if (teclas.has('KeyW') || teclas.has('ArrowUp')) mover(0, v); if (teclas.has('KeyS') || teclas.has('ArrowDown')) mover(0, -v);
+    if (teclas.has('KeyA') || teclas.has('ArrowLeft')) mover(v, 0); if (teclas.has('KeyD') || teclas.has('ArrowRight')) mover(-v, 0);
+    if (teclas.has('KeyQ')) meta.rumbo -= 60 * dt; if (teclas.has('KeyE')) meta.rumbo += 60 * dt;
+    if (teclas.has('Equal') || teclas.has('NumpadAdd')) { meta.dist *= Math.exp(-1.2 * dt); dentro(meta); }
+    if (teclas.has('Minus') || teclas.has('NumpadSubtract')) { meta.dist *= Math.exp(1.2 * dt); dentro(meta); }
+    if (auto) meta.rumbo += 6 * dt;
+    const k = 1 - Math.exp(-dt * 7);
+    for (const c of ['lng', 'lat', 'dist', 'rumbo', 'ang']) est[c] += (meta[c] - est[c]) * k;
+    ponerCamara();
+    if ((tSuelo -= dt) <= 0 && tiles && scene.sampleHeightSupported) { // la altura del suelo bajo el punto mirado, medida en la malla
+      tSuelo = 0.6;
+      const hh = scene.sampleHeight(Cesium.Cartographic.fromDegrees(est.lng, est.lat), undefined, 3);
+      if (hh !== undefined && hh > 2400 && hh < 2800) SUELO += (Math.min(hh, SUELO + 60) - SUELO) * 0.5;
+    }
+    marcas();
+    const g = $('miniCam'); if (g) g.setAttribute('transform', `translate(${mx(est.lng).toFixed(1)} ${my(est.lat).toFixed(1)}) rotate(${est.rumbo.toFixed(1)}) scale(${Math.min(1.6, Math.max(0.5, est.dist / 2400)).toFixed(2)})`);
+    if ((tDonde -= dt) <= 0) {
+      tDonde = 0.4; $('rumbo').textContent = RUMBOS[Math.round((((est.rumbo % 360) + 360) % 360) / 45) % 8];
+      let c = null, cd = 1e9; for (const l of K.lugares) { const d = Math.hypot((l.lng - est.lng) * MX, (l.lat - est.lat) * MY); if (d < cd) { cd = d; c = l; } }
+      $('donde').textContent = (cd < 900 ? 'Cerca de ' + c.n : 'Localidad de Kennedy') + ' · ' + Math.round(est.dist * Math.sin(-est.ang * Math.PI / 180)) + ' m de altura';
+    }
+  });
+
+  // ---- apertura: cuando la malla ya trae detalle ----
+  ponerCamara();
+  let abierta = false;
+  const abrir = () => { if (abierta) return; abierta = true; $('carga').classList.add('fuera');
+    if (MOVIL) $('ayudaT').textContent = 'Arrastra para moverte · dos dedos para girar y acercar';
+    setTimeout(() => $('ayuda').classList.add('on'), 600); setTimeout(() => $('ayuda').classList.remove('on'), 7000); };
+  tiles.loadProgress.addEventListener((pend, proc) => { if (!abierta) progreso(0.3 + 0.6 * Math.max(0, 1 - (pend + proc) / 60), 'Cargando la ciudad en 3D…'); });
+  tiles.initialTilesLoaded.addEventListener(abrir);
+  setTimeout(abrir, 12000);
+})();
+</script>
+</body>
+</html>
