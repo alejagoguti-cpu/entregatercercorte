@@ -24,6 +24,16 @@ Paneles PROPUESTA, CÁMARA y RESULTADOS dentro del simulador (guía del Corte II
 - **Cámara tipo *Everything*:** salta de un agente a otro (carro, camión, furgón, bicicarga, comprador, peatón; tecla Tab) y cambia de escala (Agente, Barrio, Kennedy).
 - Datos: `data3d/propuesta.json`, generado con `python tools/propuesta_datos.py` a partir de los nodos del modelo de agentes de Unreal y de los parques. Las cifras sin fuente están marcadas [SUP] en el código.
 
+
+### Simulación sobre el giro (`data3d/giro_sim.js`)
+
+Encima del render de Unreal, con la misma cámara, sin cambiar la imagen:
+
+- **Sintaxis espacial de las calles** (análisis angular de segmentos, método de [DepthmapX](https://github.com/SpaceGroupUCL/depthmapX)): integración o elección angular de radio n, con la escala de color de DepthmapX (azul bajo, rojo alto). Se calcula con `python tools/kennedy_sim_datos.py` sobre las vías de OpenStreetMap de toda Kennedy más 500 m (`tools/kennedy_osm.py` las descarga).
+- **Movimiento natural:** carros, motos, camiones, bicis y peatones eligen en cada cruce el tramo siguiente según la sintaxis espacial (elección para vehículos, integración para peatones) y la continuidad del giro.
+- **Convenciones:** P1 seguimiento y cuidado del humedal (El Burro, La Vaca y Techo; habitantes y colectivos ambientales en jornada diurna y después del almuerzo), P2 biofabricación de hongos junto a Corabastos (madres comunitarias, recuperadores, jóvenes; orellanas), P3 cocinas comunitarias y degustación barrial (cocineras tradicionales, niños de colegios con su maestra, vecinos) y P4 huertas en lotes baldíos (huerteros, abejas, copetón, mirla patiamarilla, colibrí chillón, lombriz roja californiana).
+- **Panel ACTORES:** total y activos de cada actor humano y no humano, y lo que pasa en el día (recorridos de cuidado, residuos, registros de aves, sustrato, hongos, degustaciones, visitas de abejas, cosecha, humus). Reloj del día con velocidad x20, x60 y x240.
+- Cantidades y horarios sin fuente: marcados [SUP] en el código.
 ## Kennedy 360 (giro fotorrealista, como las maquetas de Umbra)
 
 Web: https://anasoficasca-code.github.io/REN3D-realista/giro.html (el giro renderizado). La página `kennedy3d.html` es el **recorrido 3D libre por toda Kennedy** (CesiumJS + malla fotorrealista de Google): se arrastra para moverse con el ángulo fijo, clic derecho o dos dedos para girar, rueda o pellizco para acercar, WASD/QE en teclado, minimapa con el límite de la localidad y lugares de OpenStreetMap (`data3d/kennedy.json`, generado con `python tools/kennedy_limite.py`).

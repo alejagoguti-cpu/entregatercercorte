@@ -1,0 +1,415 @@
+/* ============ SIMULACIÓN SOBRE EL GIRO DE KENNEDY (giro.html) ============
+   Encima del render de Unreal, con la misma cámara (window.GIRO.proyectar):
+   - Calles con SINTAXIS ESPACIAL (análisis angular de segmentos, método de DepthmapX, github.com/SpaceGroupUCL/depthmapX):
+     integración y elección calculadas en tools/kennedy_sim_datos.py, con la escala de color de DepthmapX (azul -> rojo).
+   - Movimiento natural (Hillier): carros, motos, camiones, bicis y peatones eligen en cada cruce el tramo siguiente con
+     probabilidad proporcional a su valor de sintaxis (elección para vehículos, integración para peatones) y a la
+     continuidad del giro. Así el flujo se concentra donde la configuración de la red lo concentra.
+   - Convenciones del programa (matriz del Corte III):
+     P1 Seguimiento y cuidado del humedal (bordes de El Burro, La Vaca y Techo): habitantes y colectivos ambientales,
+        jornada diurna 7:00-11:30 y jornada después del almuerzo 14:00-17:30.
+     P2 Biofabricación y cultivo popular de hongos junto a Corabastos: madres comunitarias, recuperadores de Corabastos
+        (traen el sustrato orgánico) y jóvenes aprendices; hongos orellana como actor no humano.
+     P3 Cocinas comunitarias y degustación barrial: cocineras tradicionales, niños de colegios con su maestra y vecinos.
+     P4 Huertas en lotes baldíos: huerteros, abejas, aves que atrae la huerta (copetón, mirla patiamarilla, colibrí
+        chillón) y lombriz roja californiana en el compost.
+   Cantidades y tiempos sin fuente: marcados [SUP] (supuestos de escala para discutir). */
+
+const DEPTHMAP = [[0, 0, 255], [0, 102, 255], [0, 204, 255], [0, 255, 204], [0, 255, 102], [51, 255, 0], [153, 255, 0], [255, 255, 0], [255, 204, 0], [255, 136, 0], [255, 68, 0], [255, 0, 0]]; // escala DepthmapX
+const colorDM = (v) => { const c = DEPTHMAP[Math.min(DEPTHMAP.length - 1, Math.floor(v * DEPTHMAP.length))]; return `rgb(${c[0]},${c[1]},${c[2]})`; };
+const H = (h, m = 0) => h * 60 + m;
+const JORNADAS = { P1: [[H(7), H(11, 30)], [H(14), H(17, 30)]], P2: [[H(8), H(12)], [H(13, 30), H(16, 30)]], P3: [[H(8), H(12, 30)], [H(14), H(16, 30)]], P4: [[H(7), H(10)], [H(15), H(17, 30)]] }; // [SUP]
+const enJornada = (p, t) => JORNADAS[p].some(([a, b]) => t >= a && t < b);
+
+// tipos de actor: nombre, grupo, color, tamaño (m), conteo [SUP]
+const ACT = {
+  carro: { n: 'Carros', g: 'h', c: '#f8fafc', r: 2.2 }, moto: { n: 'Motos', g: 'h', c: '#fde047', r: 1.4 }, camion: { n: 'Camiones', g: 'h', c: '#fb923c', r: 3 },
+  bici: { n: 'Ciclistas', g: 'h', c: '#7dd3fc', r: 1.3 }, peaton: { n: 'Peatones', g: 'h', c: '#e2e8f0', r: 1 },
+  hab: { n: 'Habitantes custodios', g: 'h', c: '#34d399', r: 2.2, p: 'P1' }, col: { n: 'Colectivos ambientales', g: 'h', c: '#059669', r: 2.2, p: 'P1' },
+  madre: { n: 'Madres comunitarias', g: 'h', c: '#f472b6', r: 2.2, p: 'P2' }, recu: { n: 'Recuperadores de Corabastos', g: 'h', c: '#fb7185', r: 2.2, p: 'P2' }, joven: { n: 'Jóvenes aprendices', g: 'h', c: '#c084fc', r: 2, p: 'P2' },
+  cocinera: { n: 'Cocineras tradicionales', g: 'h', c: '#facc15', r: 2.2, p: 'P3' }, nino: { n: 'Niños de colegios', g: 'h', c: '#60a5fa', r: 1.6, p: 'P3' }, maestra: { n: 'Maestras', g: 'h', c: '#2563eb', r: 2, p: 'P3' }, vecino: { n: 'Vecinos en la degustación', g: 'h', c: '#a3e635', r: 1.8, p: 'P3' },
+  huertero: { n: 'Huerteros', g: 'h', c: '#84cc16', r: 2, p: 'P4' },
+  tingua: { n: 'Tingua bogotana', g: 'n', c: '#b45309', r: 1.4, p: 'P1' }, garza: { n: 'Garza blanca', g: 'n', c: '#ffffff', r: 2, p: 'P1' }, pato: { n: 'Pato turrio', g: 'n', c: '#92400e', r: 1.4, p: 'P1' }, monjita: { n: 'Monjita', g: 'n', c: '#eab308', r: 1, p: 'P1' },
+  hongo: { n: 'Hongo orellana (bolsas)', g: 'n', c: '#e9d5ff', r: 0, p: 'P2' },
+  abeja: { n: 'Abejas', g: 'n', c: '#fde047', r: 0.8, p: 'P4' }, copeton: { n: 'Copetón', g: 'n', c: '#a16207', r: 1.1, p: 'P4' }, mirla: { n: 'Mirla patiamarilla', g: 'n', c: '#334155', r: 1.3, p: 'P4' },
+  colibri: { n: 'Colibrí chillón', g: 'n', c: '#22d3ee', r: 0.9, p: 'P4' }, lombriz: { n: 'Lombriz roja californiana', g: 'n', c: '#be123c', r: 0, p: 'P4' }
+};
+const CONV = {
+  P1: { t: 'Seguimiento y cuidado del humedal', a: 'Habitantes y colectivos ambientales', h: 'Diurna 7:00–11:30 · tarde 14:00–17:30', c: '#34d399' },
+  P2: { t: 'Biofabricación y cultivo popular de hongos', a: 'Madres comunitarias, recuperadores y jóvenes', h: '8:00–12:00 · 13:30–16:30', c: '#f472b6' },
+  P3: { t: 'Cocina comunitaria y degustación barrial', a: 'Cocineras tradicionales, niños de colegios y vecinos', h: 'Degustación 10:30 y 15:00', c: '#facc15' },
+  P4: { t: 'Huerta en lote baldío', a: 'Huerteros, abejas, aves y lombrices', h: '7:00–10:00 · 15:00–17:30', c: '#84cc16' }
+};
+
+const CSS = `
+#gs-cv,#gs-cv2{position:fixed;inset:0;width:100%;height:100%;z-index:7;pointer-events:none}
+.gs-pan{position:fixed;z-index:10;width:262px;padding:11px 12px;border-radius:14px;background:rgba(8,16,26,.8);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(125,211,252,.22);font-size:11.5px;color:#e2f3ff;max-height:calc(100vh - 170px);overflow:auto;scrollbar-width:none}
+.gs-pan::-webkit-scrollbar{display:none}
+.gs-pan h3{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;font-size:10px;letter-spacing:.22em;color:#94a3b8;font-weight:700}
+.gs-pan h3 em{font-style:normal;color:#7dd3fc;letter-spacing:.06em}
+#gs-izq{left:14px;top:72px}#gs-der{right:14px;top:56px}
+.gs-reloj{display:flex;align-items:baseline;justify-content:space-between}
+.gs-reloj b{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.gs-reloj small{color:#7dd3fc;font-size:11px;font-weight:600;text-align:right}
+.gs-fila{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+.gs-fila3{grid-template-columns:repeat(3,1fr)}
+.gs-pan button{height:30px;border:none;border-radius:8px;background:rgba(255,255,255,.06);color:#cbd5e1;font:700 10px system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}
+.gs-pan button.on{background:#7dd3fc;color:#04121c}
+.gs-pan input[type=range]{width:100%;margin:8px 0 2px;accent-color:#7dd3fc}
+.gs-ley{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:10px;color:#94a3b8}
+.gs-ley i{flex:1;height:7px;border-radius:4px;background:linear-gradient(90deg,${DEPTHMAP.map(c => `rgb(${c})`).join(',')})}
+.gs-sub{margin:10px 0 4px;font-size:9.5px;letter-spacing:.2em;color:#94a3b8;font-weight:700;display:flex;justify-content:space-between}
+.gs-t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.gs-t td{padding:2px 0;font-size:11px}
+.gs-t td:first-child{width:12px}.gs-t td:nth-child(3),.gs-t td:nth-child(4){text-align:right;padding-left:6px}
+.gs-t td:nth-child(4){color:#7dd3fc;width:38px}
+.gs-t i{display:inline-block;width:7px;height:7px;border-radius:50%}
+.gs-t .p{color:#64748b;font-size:9.5px;margin-left:4px}
+.gs-ind{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11px}
+.gs-ind b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.gs-ind span{color:#94a3b8}
+.gs-conv{display:flex;gap:7px;margin-top:6px;font-size:10.5px;line-height:1.35}
+.gs-conv b{flex:none;width:26px;height:20px;border-radius:6px;display:grid;place-items:center;color:#04121c;font-size:10px}
+.gs-conv small{display:block;color:#94a3b8}
+.gs-nota{margin-top:8px;font-size:9.5px;color:#64748b;line-height:1.35}
+#gs-tog{display:none}
+@media(max-width:760px){
+  .gs-pan{display:none;left:8px!important;right:8px!important;top:auto!important;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 56px);width:auto;max-height:46vh}
+  body.gs-abierto .gs-pan.gs-act{display:block}
+  #gs-tog{display:flex;position:fixed;z-index:11;right:10px;top:62px;height:34px;padding:0 12px;align-items:center;border:none;border-radius:10px;background:rgba(8,16,26,.8);color:#e2f3ff;font:700 10px system-ui,sans-serif;letter-spacing:.12em;border:1px solid rgba(125,211,252,.3)}
+  #gs-tog.on{background:#7dd3fc;color:#04121c}
+}`;
+
+export async function iniciarSimulacion() {
+  const GIRO = window.GIRO;
+  const D = await (await fetch('data3d/giro_sim.json')).json();
+  const $ = (id) => document.getElementById(id);
+  const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+  const cv = document.createElement('canvas'); cv.id = 'gs-cv'; const g = cv.getContext('2d');
+  const cv2 = document.createElement('canvas'); cv2.id = 'gs-cv2'; const g2 = cv2.getContext('2d'); cv2.style.zIndex = 7;
+  document.body.append(cv, cv2);
+
+  /* ---------- red ---------- */
+  const N = D.nodos, S = D.seg, ADJ = N.map(() => []);
+  S.forEach((s, i) => { ADJ[s.a].push(i); ADJ[s.b].push(i); const c = [0]; for (let k = 1; k < s.p.length; k++) c.push(c[k - 1] + Math.hypot(s.p[k][0] - s.p[k - 1][0], s.p[k][1] - s.p[k - 1][1])); s.cum = c; s.len = c[c.length - 1] || 1; });
+  const R_SIM = 2900; // radio de la simulación de movimiento alrededor del giro [m]
+  const enRadio = (p) => Math.hypot(p[0], p[1]) < R_SIM;
+  function enTramo(s, d) { let k = 1; while (k < s.cum.length - 1 && s.cum[k] < d) k++; const a = s.p[k - 1], b = s.p[k], f = (d - s.cum[k - 1]) / ((s.cum[k] - s.cum[k - 1]) || 1); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[1] - a[1], b[0] - a[0])]; }
+  function rumboSalida(s, desdeA) { const p = s.p; return desdeA ? Math.atan2(p[1][1] - p[0][1], p[1][0] - p[0][0]) : Math.atan2(p[p.length - 2][1] - p[p.length - 1][1], p[p.length - 2][0] - p[p.length - 1][0]); }
+  // movimiento natural: en el cruce elige el tramo siguiente según sintaxis espacial y continuidad del giro
+  function siguiente(ag, nodo, rumbo) {
+    const op = ADJ[nodo]; let tot = 0; const w = [];
+    for (const j of op) {
+      const s = S[j]; if (j === ag.s && op.length > 1) { w.push(0); continue; }
+      if (ag.veh && !s.v) { w.push(0); continue; }
+      const desdeA = s.a === nodo, r = rumboSalida(s, desdeA), giro = Math.abs(((r - rumbo + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      const val = ag.veh ? s.c : s.i, otro = N[desdeA ? s.b : s.a];
+      let p = Math.pow(0.05 + val, ag.beta) * Math.exp(-giro / ag.giro) * (ag.tipo === 'camion' ? 1 + s.j * s.j : 1);
+      if (!enRadio(otro)) p *= 0.04;
+      w.push(p); tot += p;
+    }
+    if (tot <= 0) return ag.s;
+    let r = Math.random() * tot; for (let k = 0; k < op.length; k++) { r -= w[k]; if (r <= 0) return op[k]; } return op[op.length - 1];
+  }
+  const candVeh = [], candPea = [];
+  S.forEach((s, i) => { const m = s.p[Math.floor(s.p.length / 2)]; if (!enRadio(m)) return; if (s.v) candVeh.push(i); candPea.push(i); });
+  function sortear(cand, clave, beta) { let t = 0; const ac = cand.map(i => (t += Math.pow(0.05 + S[i][clave], beta))); return () => { const r = Math.random() * t; let lo = 0, hi = ac.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (ac[m] < r) lo = m + 1; else hi = m; } return cand[lo]; }; }
+  const sorteoVeh = sortear(candVeh, 'c', 2), sorteoPea = sortear(candPea, 'i', 2);
+
+  // rutas (Dijkstra por longitud) para los recorridos con destino
+  function nodoCercano(x, y) { let b = 0, bd = 1e18; N.forEach((p, i) => { if (!ADJ[i].length) return; const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd) { bd = d; b = i; } }); return b; }
+  function ruta(x0, y0, x1, y1) {
+    const a = nodoCercano(x0, y0), b = nodoCercano(x1, y1), dist = new Float64Array(N.length).fill(Infinity), prev = new Int32Array(N.length).fill(-1), h = [[0, a]]; dist[a] = 0;
+    const push = (it) => { h.push(it); let i = h.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (h[p][0] <= h[i][0]) break; [h[p], h[i]] = [h[i], h[p]]; i = p; } };
+    const pop = () => { const top = h[0], l = h.pop(); if (h.length) { h[0] = l; let i = 0; for (;;) { const x = 2 * i + 1, y = x + 1; let m = i; if (x < h.length && h[x][0] < h[m][0]) m = x; if (y < h.length && h[y][0] < h[m][0]) m = y; if (m === i) break; [h[m], h[i]] = [h[i], h[m]]; i = m; } } return top; };
+    while (h.length) { const [d, u] = pop(); if (u === b) break; if (d > dist[u]) continue; for (const j of ADJ[u]) { const s = S[j], v = s.a === u ? s.b : s.a, nd = d + s.len; if (nd < dist[v]) { dist[v] = nd; prev[v] = j; push([nd, v]); } } }
+    const pts = [[x1, y1]]; let u = b;
+    while (u !== a && prev[u] >= 0) { const s = S[prev[u]], desdeB = s.b === u; const q = desdeB ? s.p.slice().reverse() : s.p; for (const p of q) pts.push(p); u = desdeB ? s.a : s.b; }
+    pts.push([x0, y0]); pts.reverse(); return linea(pts);
+  }
+  const linea = (pts) => { const c = [0]; for (let k = 1; k < pts.length; k++) c.push(c[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1])); return { p: pts, cum: c, len: c[c.length - 1] || 1 }; };
+  const sobre = (l, d) => { d = Math.max(0, Math.min(l.len, d)); let k = 1; while (k < l.cum.length - 1 && l.cum[k] < d) k++; const a = l.p[k - 1], b = l.p[k], f = (d - l.cum[k - 1]) / ((l.cum[k] - l.cum[k - 1]) || 1); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; };
+  const dentroPol = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
+  function puntoEn(P) { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const p of P) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); } for (let k = 0; k < 200; k++) { const x = x0 + Math.random() * (x1 - x0), y = y0 + Math.random() * (y1 - y0); if (dentroPol(x, y, P)) return [x, y]; } return [(x0 + x1) / 2, (y0 + y1) / 2]; }
+  const cerca = (c, r) => [c[0] + (Math.random() - 0.5) * 2 * r, c[1] + (Math.random() - 0.5) * 2 * r];
+
+  /* ---------- actores ---------- */
+  const A = []; const IND = { rondas: 0, residuos: 0, registros: 0, huidas: 0, sustrato: 0, hongos: 0, entregado: 0, degust: 0, visitas: 0, polen: 0, cosecha: 0, humus: 0, lombricesComidas: 0 };
+  const CNT = {}; const contar = (t, n) => { CNT[t] = (CNT[t] || 0) + n; };
+  // tráfico y peatones (movimiento natural sobre la sintaxis espacial)
+  const red = (tipo, n, veh, vel, beta, giro) => { for (let k = 0; k < n; k++) { const s = (veh ? sorteoVeh : sorteoPea)(); A.push({ tipo, red: true, veh, s, dir: Math.random() < 0.5 ? 1 : -1, d: Math.random() * S[s].len, vel: vel * (0.8 + Math.random() * 0.4), beta, giro, vis: true }); } contar(tipo, n); };
+  red('carro', 520, true, 9, 1.6, 0.6); red('moto', 180, true, 11, 1.4, 0.8); red('camion', 60, true, 7, 1.2, 0.5); red('bici', 90, false, 4.5, 1.6, 0.7); red('peaton', 900, false, 1.3, 2.2, 0.9); // [SUP]
+  // P1: custodios en el borde de cada humedal
+  const HUM = D.humedales.map(h => ({ ...h, l: linea(h.borde) }));
+  const P1n = { 'Humedal El Burro': [10, 8], 'Humedal La Vaca': [6, 5], 'Humedal de Techo': [4, 3] }; // [SUP] habitantes, colectivos
+  const AVES_H = { 'Humedal El Burro': { tingua: 6, garza: 8, pato: 10, monjita: 16 }, 'Humedal La Vaca': { tingua: 3, garza: 4, pato: 6, monjita: 8 }, 'Humedal de Techo': { tingua: 1, garza: 2, pato: 4, monjita: 6 } }; // [SUP]
+  for (const h of HUM) {
+    const [nh, nc] = P1n[h.n] || [3, 2];
+    for (let k = 0; k < nh + nc; k++) A.push({ tipo: k < nh ? 'hab' : 'col', ronda: h, d: Math.random() * h.l.len, sentido: Math.random() < 0.5 ? 1 : -1, vel: 1.0, prox: 60 + Math.random() * 120, pausa: 0, ini: Math.random() * 35, vis: false });
+    contar('hab', nh); contar('col', nc);
+    for (const [t, n] of Object.entries(AVES_H[h.n] || {})) { for (let k = 0; k < n; k++) { const p = puntoEn(h.poly); A.push({ tipo: t, ave: h, x: p[0], y: p[1], obj: puntoEn(h.poly), vel: t === 'garza' ? 0.5 : 0.35, vis: true }); } contar(t, n); }
+  }
+  // P2: biofábrica de hongos junto a Corabastos
+  const BIO = D.biofabrica, CORA = D.corabastos.c, rRecu = ruta(CORA[0], CORA[1], BIO[0], BIO[1]);
+  for (let k = 0; k < 12; k++) A.push({ tipo: 'madre', zona: BIO, rz: 30, x: BIO[0], y: BIO[1], obj: cerca(BIO, 30), pausa: 0, ini: Math.random() * 20, vis: false });
+  for (let k = 0; k < 6; k++) A.push({ tipo: 'recu', lin: rRecu, d: Math.random() * rRecu.len, sentido: 1, vel: 1.1, carga: true, ini: Math.random() * 20, vis: false });
+  for (let k = 0; k < 4; k++) A.push({ tipo: 'joven', zona: BIO, rz: 35, x: BIO[0], y: BIO[1], obj: cerca(BIO, 35), pausa: 0, ini: Math.random() * 20, vis: false });
+  contar('madre', 12); contar('recu', 6); contar('joven', 4); contar('hongo', 600); // [SUP] 600 bolsas de orellana
+  // P3: cocinas comunitarias, colegios y degustación barrial
+  const COC = D.cocinas.map(c => ({ ...c }));
+  for (const c of COC) { for (let k = 0; k < 4; k++) A.push({ tipo: 'cocinera', zona: c.p, rz: 14, x: c.p[0], y: c.p[1], obj: cerca(c.p, 14), pausa: 0, ini: Math.random() * 15, vis: false }); }
+  contar('cocinera', COC.length * 4);
+  const rEntrega = COC.map(c => ruta(BIO[0], BIO[1], c.p[0], c.p[1]));
+  D.colegios.forEach((co) => {
+    let ci = 0, bd = 1e18; COC.forEach((c, i) => { const d = Math.hypot(c.p[0] - co.p[0], c.p[1] - co.p[1]); if (d < bd) { bd = d; ci = i; } });
+    const l = ruta(co.p[0], co.p[1], COC[ci].p[0], COC[ci].p[1]);
+    for (let k = 0; k < 16; k++) A.push({ tipo: k ? 'nino' : 'maestra', grupo: l, coc: ci, d: -k * 2.2, fase: 0, vis: false, off: [(Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4] });
+  });
+  contar('nino', D.colegios.length * 15); contar('maestra', D.colegios.length);
+  for (const [ci, c] of COC.entries()) for (let k = 0; k < 18; k++) { const o = cerca(c.p, 380); A.push({ tipo: 'vecino', lin: ruta(o[0], o[1], c.p[0], c.p[1]), coc: ci, d: 0, ini: Math.random() * 25, vis: false, fase: 0 }); }
+  contar('vecino', COC.length * 18);
+  // P4: huertas en lotes baldíos
+  const HUE = D.huertas.map(h => ({ ...h, colmena: [h.c[0] + 6, h.c[1] - 6], flores: Array.from({ length: 14 }, () => puntoEn(h.poly)), lomb: 2000 })); // [SUP] 2.000 lombrices por compostera
+  for (const h of HUE) {
+    for (let k = 0; k < 3; k++) A.push({ tipo: 'huertero', zona: h.c, pol: h.poly, x: h.c[0], y: h.c[1], obj: puntoEn(h.poly), pausa: 0, ini: Math.random() * 25, vis: false });
+    for (let k = 0; k < 30; k++) A.push({ tipo: 'abeja', h, x: h.colmena[0], y: h.colmena[1], obj: null, pausa: Math.random() * 3, vis: false });
+    for (let k = 0; k < 6; k++) { const p = puntoEn(h.poly); A.push({ tipo: 'copeton', h, x: p[0], y: p[1], obj: puntoEn(h.poly), vel: 0.8, vis: true }); }
+    for (let k = 0; k < 3; k++) { const p = puntoEn(h.poly); A.push({ tipo: 'mirla', h, x: p[0], y: p[1], obj: puntoEn(h.poly), vel: 0.7, vis: true }); }
+    for (let k = 0; k < 2; k++) { const p = puntoEn(h.poly); A.push({ tipo: 'colibri', h, x: p[0], y: p[1], obj: h.flores[0], vel: 6, pausa: 0, vis: true }); }
+  }
+  contar('huertero', HUE.length * 3); contar('abeja', HUE.length * 30); contar('copeton', HUE.length * 6); contar('mirla', HUE.length * 3); contar('colibri', HUE.length * 2); contar('lombriz', HUE.length * 2000);
+  const bicis = rEntrega.map((l, i) => ({ tipo: 'recu', entrega: i, lin: l, d: 0, sentido: 1, vis: false })); // bicicargas de hongos a las cocinas (se ven como recuperadores)
+
+  /* ---------- interfaz ---------- */
+  const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: true };
+  const izq = document.createElement('div'); izq.className = 'gs-pan gs-act'; izq.id = 'gs-izq';
+  izq.innerHTML = `<h3>SIMULACIÓN <em id="gs-dia">DÍA 1</em></h3>
+    <div class="gs-reloj"><b id="gs-hora">06:30</b><small id="gs-jor">Antes de la jornada</small></div>
+    <input type="range" id="gs-t" min="${H(5, 30)}" max="${H(19, 30)}" step="1" aria-label="Hora del día">
+    <div class="gs-fila"><button id="gs-play">❚❚</button><button data-v="20">x20</button><button data-v="60" class="on">x60</button><button data-v="240">x240</button></div>
+    <div class="gs-sub">SINTAXIS ESPACIAL <span>DepthmapX</span></div>
+    <div class="gs-fila gs-fila3" id="gs-capa"><button data-c="i" class="on">Integración</button><button data-c="c">Elección</button><button data-c="">Apagar</button></div>
+    <div class="gs-ley"><span>baja</span><i></i><span>alta</span></div>
+    <div class="gs-fila" style="grid-template-columns:1fr 1fr"><button id="gs-ag" class="on">Agentes</button><button id="gs-cv-b" class="on">Convenciones</button></div>
+    <div class="gs-sub">CONVENCIONES</div>
+    ${Object.entries(CONV).map(([k, c]) => `<div class="gs-conv"><b style="background:${c.c}">${k}</b><div>${c.t}<small>${c.a} · ${c.h}</small></div></div>`).join('')}`;
+  const der = document.createElement('div'); der.className = 'gs-pan'; der.id = 'gs-der';
+  const fila = (k) => `<tr><td><i style="background:${ACT[k].c}"></i></td><td>${ACT[k].n}${ACT[k].p ? `<span class="p">${ACT[k].p}</span>` : ''}</td><td>${(CNT[k] || 0).toLocaleString('es-CO')}</td><td id="gs-a-${k}">–</td></tr>`;
+  const H_ = Object.keys(ACT).filter(k => ACT[k].g === 'h'), NH = Object.keys(ACT).filter(k => ACT[k].g === 'n');
+  const tot = (L) => L.reduce((s, k) => s + (CNT[k] || 0), 0).toLocaleString('es-CO');
+  der.innerHTML = `<h3>ACTORES <em>total · activos</em></h3>
+    <div class="gs-sub">HUMANOS <span>${tot(H_)}</span></div><table class="gs-t">${H_.map(fila).join('')}</table>
+    <div class="gs-sub">NO HUMANOS <span>${tot(NH)}</span></div><table class="gs-t">${NH.map(fila).join('')}</table>
+    <div class="gs-sub">LO QUE PASA HOY</div>
+    <div class="gs-ind">
+      <span>P1 recorridos de cuidado</span><b id="gs-i-rondas">0</b><span>P1 residuos recogidos</span><b id="gs-i-residuos">0</b><span>P1 registros de aves</span><b id="gs-i-registros">0</b>
+      <span>P2 sustrato traído</span><b id="gs-i-sustrato">0</b><span>P2 hongos cosechados</span><b id="gs-i-hongos">0</b><span>P3 degustaciones</span><b id="gs-i-degust">0</b>
+      <span>P4 visitas de abejas</span><b id="gs-i-visitas">0</b><span>P4 cosecha de huerta</span><b id="gs-i-cosecha">0</b><span>P4 humus de lombriz</span><b id="gs-i-humus">0</b>
+    </div>
+    <div class="gs-nota">Calles: análisis angular de segmentos (método DepthmapX) sobre OpenStreetMap. Cantidades y horarios son supuestos de escala [SUP] para discutir con el grupo.</div>`;
+  const tog = document.createElement('button'); tog.id = 'gs-tog'; tog.textContent = 'DATOS';
+  document.body.append(izq, der, tog);
+  tog.onclick = () => { const on = !document.body.classList.contains('gs-abierto'); document.body.classList.toggle('gs-abierto', on); tog.classList.toggle('on', on); if (!on) return; const vis = izq.classList.contains('gs-act'); izq.classList.toggle('gs-act', !vis); der.classList.toggle('gs-act', vis); tog.textContent = vis ? 'ACTORES' : 'SIMULACIÓN'; };
+  if (matchMedia('(max-width:760px)').matches) { izq.classList.remove('gs-act'); der.classList.add('gs-act'); }
+  const tl = $('gs-t'); tl.value = st0.t; tl.oninput = () => { st0.t = +tl.value; };
+  $('gs-play').onclick = () => { st0.play = !st0.play; $('gs-play').textContent = st0.play ? '❚❚' : '▶'; };
+  izq.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { st0.vel = +b.dataset.v; izq.querySelectorAll('[data-v]').forEach(x => x.classList.toggle('on', x === b)); });
+  izq.querySelectorAll('#gs-capa button').forEach(b => b.onclick = () => { st0.capa = b.dataset.c; izq.querySelectorAll('#gs-capa button').forEach(x => x.classList.toggle('on', x === b)); vCache = -1; });
+  $('gs-ag').onclick = (e) => { st0.agentes = !st0.agentes; e.currentTarget.classList.toggle('on', st0.agentes); };
+  $('gs-cv-b').onclick = (e) => { st0.conv = !st0.conv; e.currentTarget.classList.toggle('on', st0.conv); vCache = -1; };
+
+  /* ---------- capa fija por ángulo: calles con sintaxis espacial y zonas de las convenciones ---------- */
+  let vCache = -1, W = 0, Hh = 0, dpr = 1;
+  const Z0 = 0; // altura del suelo en el marco del render
+  function dibujarFija() {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, Hh);
+    const P = GIRO.proyectar;
+    if (st0.capa) {
+      const clave = st0.capa, cubos = DEPTHMAP.map(() => [new Path2D(), new Path2D(), new Path2D()]); // color × grosor
+      for (const s of S) {
+        const v = s[clave], ci = Math.min(DEPTHMAP.length - 1, Math.floor(v * DEPTHMAP.length));
+        let prev = null, zsum = 0, n = 0; const path = new Path2D(); let algo = false;
+        for (const q of s.p) {
+          const r = P(q[0], q[1], Z0);
+          if (r && r[0] > -200 && r[0] < W + 200 && r[1] > -200 && r[1] < Hh + 200) { if (prev) path.lineTo(r[0], r[1]); else path.moveTo(r[0], r[1]); prev = r; zsum += r[2]; n++; algo = true; } else prev = null;
+        }
+        if (!algo || n < 2) continue;
+        const z = zsum / Math.max(1, n), gi = z < 900 ? 0 : z < 2200 ? 1 : 2;
+        cubos[ci][gi].addPath(path);
+      }
+      const anchos = [2.4, 1.5, 0.9];
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      for (let gi = 2; gi >= 0; gi--) for (let ci = 0; ci < DEPTHMAP.length; ci++) {
+        g.globalAlpha = 0.32 + 0.5 * (ci / DEPTHMAP.length) * (gi === 2 ? 0.75 : 1); g.strokeStyle = colorDM((ci + 0.5) / DEPTHMAP.length); g.lineWidth = anchos[gi] * (0.75 + 0.5 * ci / DEPTHMAP.length); g.stroke(cubos[ci][gi]);
+      }
+      g.globalAlpha = 1;
+    }
+    if (st0.conv) {
+      const poli = (pts, fill, stroke, w) => { const p = new Path2D(); let ok = 0; pts.forEach((q, k) => { const r = P(q[0], q[1], Z0); if (!r) return; ok++; k ? p.lineTo(r[0], r[1]) : p.moveTo(r[0], r[1]); }); if (ok < 3) return; p.closePath(); if (fill) { g.fillStyle = fill; g.fill(p); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = w; g.stroke(p); } };
+      for (const h of HUM) { g.setLineDash([7, 5]); poli(h.borde, null, CONV.P1.c, 2.4); g.setLineDash([]); poli(h.poly, 'rgba(52,211,153,.10)', null); }
+      const circ = (c, r, col) => { const pts = []; for (let k = 0; k < 28; k++) pts.push([c[0] + Math.cos(k / 28 * 6.283) * r, c[1] + Math.sin(k / 28 * 6.283) * r]); poli(pts, col + '33', col, 2); };
+      circ(BIO, 45, CONV.P2.c); for (const c of COC) circ(c.p, 26, CONV.P3.c);
+      for (const h of HUE) poli(h.poly, 'rgba(132,204,22,.22)', CONV.P4.c, 2);
+    }
+  }
+  function etiquetas() { // tarjetas P1-P4 encima de los agentes
+    const P = GIRO.proyectar, L = [];
+    if (st0.conv) {
+      for (const h of HUM) { const q = h.borde[Math.floor(h.borde.length * 0.15)]; L.push(['P1', q, h.n.replace('Humedal ', '')]); }
+      L.push(['P2', BIO, 'junto a Corabastos']); COC.forEach((c, i) => L.push(['P3', c.p, 'Cocina ' + (i + 1)])); HUE.forEach((h, i) => L.push(['P4', h.c, 'Lote ' + (i + 1)]));
+    }
+    g2.font = '700 11px system-ui,-apple-system,"Segoe UI",sans-serif'; g2.textBaseline = 'middle';
+    for (const [k, q, sub] of L) {
+      const r = P(q[0], q[1], 8); if (!r || r[0] < 0 || r[0] > W || r[1] < 60 || r[1] > Hh - 60 || r[2] > 4200) continue;
+      const c = CONV[k], t1 = k + ' · ' + c.t, t2 = sub + ' · ' + c.h, big = r[2] < 1500;
+      const w = big ? Math.max(g2.measureText(t1).width, g2.measureText(t2).width * 0.9) + 20 : g2.measureText(k).width + 14, x = r[0], y = r[1] - (big ? 46 : 26) - (k === 'P2' ? 48 : 0);
+      g2.strokeStyle = c.c; g2.lineWidth = 1.2; g2.beginPath(); g2.moveTo(x, r[1]); g2.lineTo(x, y + (big ? 16 : 9)); g2.stroke();
+      g2.fillStyle = 'rgba(8,16,26,.86)'; g2.beginPath(); g2.roundRect(x - w / 2, y - (big ? 16 : 9), w, big ? 32 : 18, 8); g2.fill(); g2.stroke();
+      g2.fillStyle = c.c; g2.textAlign = 'center';
+      if (big) { g2.fillText(t1, x, y - 6); g2.font = '500 10px system-ui,sans-serif'; g2.fillStyle = '#cbd5e1'; g2.fillText(t2, x, y + 8); g2.font = '700 11px system-ui,-apple-system,"Segoe UI",sans-serif'; }
+      else g2.fillText(k, x, y);
+    }
+    g2.textAlign = 'left';
+  }
+
+  /* ---------- un paso de simulación ---------- */
+  const mover2 = (a, vel, dt) => { const dx = a.obj[0] - a.x, dy = a.obj[1] - a.y, d = Math.hypot(dx, dy); if (d < 0.6) return true; const s = Math.min(d, vel * dt); a.x += dx / d * s; a.y += dy / d * s; return false; };
+  function paso(dtR) {
+    const T = st0.t, dtS = st0.play ? dtR * st0.vel / 60 : 0, F = Math.min(st0.vel, 8) * (st0.play ? 1 : 0), dt = dtR * F, dtT = dtS * 60; // dtT: segundos simulados (recorridos con horario) // dtS en minutos simulados; dt en segundos "visuales"
+    if (st0.play) { st0.t += dtS; if (st0.t > H(19, 30)) { st0.t = H(5, 30); st0.dia++; for (const k of Object.keys(IND)) IND[k] = 0; } }
+    const humanos = [];
+    for (const a of A) {
+      if (a.red) { // tráfico y peatones
+        a.d += a.vel * dt;
+        while (a.d > S[a.s].len) { const s = S[a.s], nodo = a.dir > 0 ? s.b : s.a, r = enTramo(s, a.dir > 0 ? s.len : 0)[2] + (a.dir > 0 ? 0 : Math.PI); a.d -= s.len; const j = siguiente(a, nodo, r); a.dir = S[j].a === nodo ? 1 : -1; a.s = j; }
+        const s = S[a.s], p = enTramo(s, a.dir > 0 ? a.d : s.len - a.d); a.x = p[0]; a.y = p[1];
+        if (a.tipo === 'peaton') humanos.push(a);
+        continue;
+      }
+      switch (a.tipo) {
+        case 'hab': case 'col': {
+          const on = enJornada('P1', T - a.ini); a.vis = on; if (!on) break;
+          if (a.pausa > 0) { a.pausa -= dtS; if (a.pausa <= 0) { IND.residuos += a.tipo === 'col' ? 0.6 : 0.3; IND.registros += Math.random() < 0.7 ? 1 + Math.floor(Math.random() * 3) : 0; } }
+          else { const m = a.vel * dt; a.d = (a.d + a.sentido * m + a.ronda.l.len) % a.ronda.l.len; IND.rondas += a.vel * dtS * 60 / 1000; a.prox -= m; if (a.prox <= 0) { a.pausa = 4 + Math.random() * 8; a.prox = 70 + Math.random() * 110; } }
+          const p = sobre(a.ronda.l, a.d); a.x = p[0]; a.y = p[1]; humanos.push(a); break;
+        }
+        case 'madre': case 'joven': case 'cocinera': case 'huertero': {
+          const pk = ACT[a.tipo].p, on = enJornada(pk, T - a.ini); a.vis = on; if (!on) break;
+          if (a.pausa > 0) { a.pausa -= dtS; if (a.pausa <= 0) { if (a.tipo === 'madre') IND.hongos += 0.35; if (a.tipo === 'huertero') IND.cosecha += 0.4; } }
+          else if (mover2(a, 0.9, dt)) { a.pausa = 3 + Math.random() * 9; a.obj = a.pol ? puntoEn(a.pol) : cerca(a.zona, a.rz); }
+          humanos.push(a); break;
+        }
+        case 'recu': {
+          if (a.entrega !== undefined) { // bicicarga con hongos hacia la cocina, a las 9:00
+            const on = T >= H(9) && T < H(11); a.vis = on && a.d < a.lin.len * 2; if (!a.vis) { if (T < H(9)) a.d = 0; break; }
+            a.d += 4 * dtT; const ida = a.d <= a.lin.len, p = sobre(a.lin, ida ? a.d : 2 * a.lin.len - a.d); a.x = p[0]; a.y = p[1];
+            if (!ida && !a.ok) { a.ok = true; IND.entregado += 25; } if (T < H(9, 5)) a.ok = false; break;
+          }
+          const on = enJornada('P2', T - a.ini); a.vis = on; if (!on) break;
+          a.d += a.sentido * 1.1 * dtT;
+          if (a.d >= a.lin.len) { a.d = a.lin.len; a.sentido = -1; IND.sustrato += 40; } else if (a.d <= 0) { a.d = 0; a.sentido = 1; }
+          const p = sobre(a.lin, a.d); a.x = p[0]; a.y = p[1]; humanos.push(a); break;
+        }
+        case 'nino': case 'maestra': { // grupos escolares: salen 10:00, degustación 10:30-11:30, regresan
+          const l = a.grupo, ida = T >= H(10) && T < H(11, 30), vuelta = T >= H(11, 30) && T < H(12, 30);
+          a.vis = ida || vuelta; if (!a.vis) { a.d = a.d0 === undefined ? (a.d0 = a.d) : a.d0; a.fase = 0; break; }
+          if (ida) { if (a.d < l.len) a.d = Math.min(l.len, a.d + 1.1 * dtT); else if (!a.fase) { a.fase = 1; IND.degust++; } }
+          else a.d = Math.max(0, a.d - 1.1 * dtT);
+          const p = sobre(l, a.d), j = a.d >= l.len - 0.5 ? 6 : 1; a.x = p[0] + a.off[0] * j; a.y = p[1] + a.off[1] * j; humanos.push(a); break;
+        }
+        case 'vecino': { // degustación de la tarde 15:00-16:00
+          const l = a.lin, ida = T >= H(14, 40) + a.ini && T < H(16), vuelta = T >= H(16) && T < H(16, 40);
+          a.vis = ida || vuelta; if (!a.vis) { a.d = 0; a.fase = 0; break; }
+          if (ida) { if (a.d < l.len) a.d = Math.min(l.len, a.d + 1.2 * dtT); else if (!a.fase) { a.fase = 1; IND.degust++; } } else a.d = Math.max(0, a.d - 1.2 * dtT);
+          const p = sobre(l, a.d); a.x = p[0]; a.y = p[1]; humanos.push(a); break;
+        }
+        default: break;
+      }
+    }
+    // no humanos: reaccionan a las personas cercanas
+    const cercaHumano = (x, y, r) => { for (const h of humanos) if (h.vis !== false && Math.abs(h.x - x) < r && Math.abs(h.y - y) < r && Math.hypot(h.x - x, h.y - y) < r) return h; return null; };
+    for (const a of A) {
+      switch (a.tipo) {
+        case 'tingua': case 'garza': case 'pato': case 'monjita': {
+          const h = cercaHumano(a.x, a.y, a.tipo === 'garza' ? 35 : 25);
+          if (h && !a.huye) { a.huye = 1; IND.huidas++; const dx = a.x - h.x, dy = a.y - h.y, d = Math.hypot(dx, dy) || 1; let o = [a.x + dx / d * 60, a.y + dy / d * 60]; if (!dentroPol(o[0], o[1], a.ave.poly)) o = puntoEn(a.ave.poly); a.obj = o; }
+          if (mover2(a, a.huye ? (a.tipo === 'garza' ? 5 : 2) : a.vel, dt)) { a.huye = 0; a.obj = Math.random() < 0.7 ? cerca([a.x, a.y], 25) : puntoEn(a.ave.poly); if (!dentroPol(a.obj[0], a.obj[1], a.ave.poly)) a.obj = puntoEn(a.ave.poly); }
+          break;
+        }
+        case 'abeja': { // pecorea entre 9:00 y 16:00: de la colmena a una flor y de vuelta
+          a.vis = T >= H(9) && T < H(16); if (!a.vis) { a.x = a.h.colmena[0]; a.y = a.h.colmena[1]; break; }
+          if (a.pausa > 0) { a.pausa -= dtS; break; }
+          if (!a.obj) a.obj = Math.random() < 0.85 ? a.h.flores[Math.floor(Math.random() * a.h.flores.length)] : cerca(a.h.c, 220);
+          if (mover2(a, 5, dt)) { if (a.obj === a.h.colmena) { a.obj = null; a.pausa = 1 + Math.random() * 2; } else { IND.visitas++; IND.polen += 0.02; a.pausa = 0.5 + Math.random(); a.obj = a.h.colmena; } }
+          break;
+        }
+        case 'copeton': case 'mirla': {
+          const h = cercaHumano(a.x, a.y, 12);
+          if (h) { const dx = a.x - h.x, dy = a.y - h.y, d = Math.hypot(dx, dy) || 1; a.obj = [a.x + dx / d * 25, a.y + dy / d * 25]; if (!a.huye) { a.huye = 1; IND.huidas++; } }
+          if (mover2(a, a.huye ? 6 : a.vel, dt)) { a.huye = 0; a.obj = puntoEn(a.h.poly); if (a.tipo === 'mirla' && Math.random() < 0.15) { IND.lombricesComidas++; } }
+          break;
+        }
+        case 'colibri': {
+          if (a.pausa > 0) { a.pausa -= dtS; break; }
+          if (mover2(a, a.vel, dt)) { a.pausa = 0.3 + Math.random() * 0.6; a.obj = a.h.flores[Math.floor(Math.random() * a.h.flores.length)]; IND.visitas++; }
+          break;
+        }
+      }
+    }
+    // lombrices: transforman el compost en humus (0,3 g por lombriz y día de actividad) [SUP]
+    for (const h of HUE) { IND.humus += h.lomb * 0.0003 * dtS / 60 * (T > H(6) && T < H(19) ? 1 : 0.5); h.lomb += h.lomb * 0.00002 * dtS - (IND.lombricesComidas > (h.comidas || 0) ? 1 : 0); h.comidas = IND.lombricesComidas; }
+  }
+
+  /* ---------- dibujo de agentes ---------- */
+  function dibujarAgentes() {
+    g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, W, Hh);
+    const P = GIRO.proyectar, foco = Hh / (2 * Math.tan(Math.atan(18 / 20) / 1.7778)); // aprox. píxeles por metro a 1 m
+    const activos = {};
+    if (st0.agentes) {
+      const lotes = {};
+      for (const a of A) {
+        if (a.vis === false) continue;
+        activos[a.tipo] = (activos[a.tipo] || 0) + 1;
+        const r = P(a.x, a.y, a.tipo === 'garza' || a.tipo === 'abeja' || a.tipo === 'colibri' ? 3 : 1.2); if (!r || r[0] < -5 || r[0] > W + 5 || r[1] < -5 || r[1] > Hh + 5 || r[2] > 3200) continue;
+        const t = ACT[a.tipo], px = Math.max(a.red ? 1 : 1.6, Math.min(7, t.r * 2.4 * 780 / r[2]));
+        (lotes[a.tipo] = lotes[a.tipo] || []).push(r[0], r[1], px, a.pausa > 0 ? 1 : 0);
+      }
+      for (const [k, L] of Object.entries(lotes)) {
+        const t = ACT[k]; g2.fillStyle = t.c;
+        const borde = t.p && k !== 'abeja';
+        for (let i = 0; i < L.length; i += 4) {
+          const x = L[i], y = L[i + 1], r = L[i + 2];
+          g2.beginPath(); g2.arc(x, y, r, 0, 6.283); g2.fill();
+          if (borde) { g2.strokeStyle = 'rgba(4,18,28,.85)'; g2.lineWidth = 1; g2.stroke(); }
+          if (L[i + 3] && t.g === 'h') { g2.strokeStyle = t.c; g2.globalAlpha = 0.55; g2.beginPath(); g2.arc(x, y, r + 4, 0, 6.283); g2.stroke(); g2.globalAlpha = 1; }
+        }
+      }
+    }
+    etiquetas();
+    return activos;
+  }
+
+  let ult = performance.now(), tPanel = 0;
+  function cuadro() {
+    const ahora = performance.now(), dtR = Math.min(0.1, (ahora - ult) / 1000); ult = ahora;
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    if (W !== innerWidth || Hh !== innerHeight) { W = innerWidth; Hh = innerHeight; for (const c of [cv, cv2]) { c.width = Math.round(W * dpr); c.height = Math.round(Hh * dpr); } vCache = -1; }
+    if (GIRO.v && vCache !== GIRO.v + '|' + GIRO.i) { vCache = GIRO.v + '|' + GIRO.i; dibujarFija(); }
+    paso(dtR);
+    const act = dibujarAgentes();
+    if ((tPanel -= dtR) <= 0) {
+      tPanel = 0.3;
+      const T = st0.t, hh = Math.floor(T / 60), mm = Math.floor(T % 60);
+      $('gs-hora').textContent = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); $('gs-dia').textContent = 'DÍA ' + st0.dia;
+      if (document.activeElement !== tl) tl.value = Math.floor(T);
+      $('gs-jor').textContent = T < H(7) ? 'Amanece · antes de las jornadas' : T < H(11, 30) ? 'Jornada diurna' : T < H(14) ? 'Almuerzo' : T < H(17, 30) ? 'Jornada después del almuerzo' : 'Cae la tarde';
+      for (const k of Object.keys(ACT)) { const e = $('gs-a-' + k); if (e) e.textContent = (k === 'hongo' ? (T > H(8) ? 600 : 0) : k === 'lombriz' ? Math.round(HUE.reduce((s, h) => s + h.lomb, 0)) : (act[k] || 0)).toLocaleString('es-CO'); }
+      const f = (v, u, d = 0) => v.toLocaleString('es-CO', { maximumFractionDigits: d }) + (u ? ' ' + u : '');
+      $('gs-i-rondas').textContent = f(IND.rondas, 'km', 1); $('gs-i-residuos').textContent = f(IND.residuos, 'kg', 1); $('gs-i-registros').textContent = f(IND.registros);
+      $('gs-i-sustrato').textContent = f(IND.sustrato, 'kg'); $('gs-i-hongos').textContent = f(IND.hongos, 'kg', 1); $('gs-i-degust').textContent = f(IND.degust);
+      $('gs-i-visitas').textContent = f(IND.visitas); $('gs-i-cosecha').textContent = f(IND.cosecha, 'kg', 1); $('gs-i-humus').textContent = f(IND.humus, 'kg', 1);
+    }
+    requestAnimationFrame(cuadro);
+  }
+  requestAnimationFrame(cuadro);
+}

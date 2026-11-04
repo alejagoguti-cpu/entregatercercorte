@@ -94,13 +94,19 @@
   const G = { N: 72, RADIO: 650, ALTO: 260, OBJ_Z: 25, FOCAL: 20, SENSOR_W: 36, ASPECTO: 16 / 9, LAT: 4.640683, LON: -74.149778 };
   const MXg = 111320 * Math.cos(4.63 * Math.PI / 180), MYg = 110540;
   // puntos del territorio (lat, lng reales; alto de la etiqueta en m)
-  const PUNTOS = [
-    { n: 'Humedal El Burro', lat: 4.640683, lng: -74.149778, z: 10, d: 'Humedal urbano de Kennedy: refugio de aves (tinguas, garzas, patos) y pieza clave de la estructura ecológica del sur occidente de Bogotá.' },
-    { n: 'Parque Timiza', lat: 4.6081, lng: -74.1537, z: 10, d: 'Parque metropolitano con lago, uno de los grandes espacios verdes y recreativos de la localidad.' },
-    { n: 'Plaza de las Américas', lat: 4.6190, lng: -74.1352, z: 25, d: 'Centro comercial y nodo urbano sobre la Avenida Américas.' },
-    { n: 'Estadio Metropolitano de Techo', lat: 4.6234, lng: -74.1354, z: 20, d: 'Escenario deportivo de la zona occidental de la ciudad.' }
-  ];
-  const $ = id => document.getElementById(id);
+  const PUNTOS = [ // OpenStreetMap (data3d/kennedy.json)
+    { n: 'Humedal El Burro', lat: 4.641417, lng: -74.149576, z: 10, d: 'Humedal urbano de Kennedy: refugio de aves (tinguas, garzas, patos) y pieza clave de la estructura ecológica del suroccidente de Bogotá.' },
+    { n: 'Humedal La Vaca', lat: 4.628701, lng: -74.161978, z: 10, d: 'Humedal junto a Corabastos, en recuperación por la comunidad.' },
+    { n: 'Humedal de Techo', lat: 4.645179, lng: -74.141652, z: 10, d: 'Humedal pequeño rodeado de barrios.' },
+    { n: 'Corabastos', lat: 4.63089, lng: -74.159504, z: 15, d: 'Central mayorista de alimentos de Bogotá: el nodo que concentra el abastecimiento.' },
+    { n: 'Portal Américas', lat: 4.629423, lng: -74.17245, z: 15, d: 'Portal de TransMilenio en el occidente de Kennedy.' },
+    { n: 'Parque Timiza', lat: 4.610461, lng: -74.156535, z: 10, d: 'Parque metropolitano con lago.' },
+    { n: 'Plaza de las Américas', lat: 4.619142, lng: -74.135191, z: 25, d: 'Centro comercial y nodo urbano sobre la Avenida Américas.' },
+    { n: 'Biblioteca El Tintal', lat: 4.643896, lng: -74.153767, z: 15, d: 'Biblioteca pública en una antigua planta de basuras.' },
+    { n: 'Parque Cayetano Cañizares', lat: 4.624735, lng: -74.161866, z: 10, d: 'Parque zonal de Kennedy.' },
+    { n: 'Kennedy Central', lat: 4.623167, lng: -74.154738, z: 10, d: 'Barrio fundacional de la localidad (1961).' },
+    { n: 'Banderas', lat: 4.631319, lng: -74.153232, z: 15, d: 'Glorieta y estación de Banderas, sobre la Avenida Américas.' }
+  ];  const $ = id => document.getElementById(id);
   const cv = $('lienzo'), ctx = cv.getContext('2d');
   const chicas = new Array(G.N), grandes = new Array(G.N);
   let actual = 0, pos = 0, vel = 0, auto = false, arrastre = null, ultimoX = 0, ultimoT = 0, dirty = true;
@@ -154,7 +160,7 @@
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(im, ox, oy, w, h);
     const dpr = W / innerWidth; encuadre = { ox: ox / dpr, oy: oy / dpr, w: w / dpr, h: h / dpr };
-    ponerMarcas();
+    ponerMarcas(); GIRO.v++;
     $('grados').textContent = Math.round(actual * 360 / G.N) + '°';
   }
 
@@ -188,6 +194,23 @@
     });
   }
 
+  // ---- cámara del render para otras capas (data3d/giro_sim.js): proyecta un punto X este, Y sur, Z arriba (m) a la pantalla ----
+  const GIRO = window.GIRO = { v: 0, get i() { return actual; }, get N() { return G.N; }, proyectar: null };
+  {
+    let ci = -1, k = null;
+    GIRO.proyectar = (X, Y, Z) => {
+      if (ci !== actual) { ci = actual; const a = 2 * Math.PI * actual / G.N, cx = Math.sin(a) * G.RADIO, cy = -Math.cos(a) * G.RADIO, cz = G.ALTO;
+        let fx = -cx, fy = -cy, fz = G.OBJ_Z - cz; const fl = Math.hypot(fx, fy, fz); fx /= fl; fy /= fl; fz /= fl;
+        let rx = -fy, ry = fx; const rl = Math.hypot(rx, ry); rx /= rl; ry /= rl;
+        const ux = -fz * fx, uy = -fz * fy, uz = 1 - fz * fz, ul = Math.hypot(ux, uy, uz), th = (G.SENSOR_W / 2) / G.FOCAL;
+        k = { cx, cy, cz, fx, fy, fz, rx, ry, ux: ux / ul, uy: uy / ul, uz: uz / ul, th, tv: th / G.ASPECTO }; }
+      const dx = X - k.cx, dy = Y - k.cy, dz = Z - k.cz, z = dx * k.fx + dy * k.fy + dz * k.fz;
+      if (z < 5) return null;
+      const u = 0.5 + (dx * k.rx + dy * k.ry) / z / (2 * k.th), v = 0.5 - (dx * k.ux + dy * k.uy + dz * k.uz) / z / (2 * k.tv);
+      return [encuadre.ox + u * encuadre.w, encuadre.oy + v * encuadre.h, z];
+    };
+  }
+
   // ---- interacción ----
   const vista = $('vista'), PX_POR_VISTA = () => Math.max(8, innerWidth / 90);
   vista.addEventListener('pointerdown', e => { arrastre = { x: e.clientX, p: pos }; ultimoX = e.clientX; ultimoT = performance.now(); vel = 0; auto = false; $('bAuto').classList.remove('on'); vista.classList.add('arrastrando'); vista.setPointerCapture(e.pointerId); $('ayuda').classList.remove('on'); });
@@ -219,5 +242,6 @@
   tam(); iniciar(); requestAnimationFrame(bucle);
 })();
 </script>
+<script type="module">import { iniciarSimulacion } from './data3d/giro_sim.js?v=1'; iniciarSimulacion().catch(e => console.warn('simulación:', e));</script>
 </body>
 </html>
