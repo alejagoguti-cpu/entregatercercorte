@@ -25,7 +25,7 @@ const enJornada = (p, t) => JORNADAS[p].some(([a, b]) => t >= a && t < b);
 const ACT = {
   carro: { n: 'Carros', g: 'h', c: '#f8fafc', r: 2.2 }, moto: { n: 'Motos', g: 'h', c: '#fde047', r: 1.4 }, camion: { n: 'Camiones', g: 'h', c: '#fb923c', r: 3 },
   bici: { n: 'Ciclistas', g: 'h', c: '#7dd3fc', r: 1.3 }, peaton: { n: 'Peatones', g: 'h', c: '#e2e8f0', r: 1 },
-  hab: { n: 'Habitantes custodios', g: 'h', c: '#34d399', r: 2.2, p: 'P1' }, col: { n: 'Colectivos ambientales', g: 'h', c: '#059669', r: 2.2, p: 'P1' },
+  hab: { n: 'Habitantes', g: 'h', c: '#34d399', r: 2.2, p: 'P1' }, col: { n: 'Colectivos ambientales', g: 'h', c: '#059669', r: 2.2, p: 'P1' },
   madre: { n: 'Madres comunitarias', g: 'h', c: '#f472b6', r: 2.2, p: 'P2' }, recu: { n: 'Recuperadores de Corabastos', g: 'h', c: '#fb7185', r: 2.2, p: 'P2' }, joven: { n: 'Jóvenes aprendices', g: 'h', c: '#c084fc', r: 2, p: 'P2' },
   cocinera: { n: 'Cocineras tradicionales', g: 'h', c: '#facc15', r: 2.2, p: 'P3' }, nino: { n: 'Niños de colegios', g: 'h', c: '#60a5fa', r: 1.6, p: 'P3' }, maestra: { n: 'Maestras', g: 'h', c: '#2563eb', r: 2, p: 'P3' }, vecino: { n: 'Vecinos en la degustación', g: 'h', c: '#a3e635', r: 1.8, p: 'P3' },
   huertero: { n: 'Huerteros', g: 'h', c: '#84cc16', r: 2, p: 'P4' },
@@ -80,14 +80,18 @@ const CSS = `
   #gs-tog.on{background:#7dd3fc;color:#04121c}
 }`;
 
-export async function iniciarSimulacion() {
-  const GIRO = window.GIRO;
+export async function iniciarSimulacion(cfg = {}) {
+  // dos modos: sobre el giro renderizado (2D, window.GIRO) o dentro de la maqueta 3D (cfg.T3: calles pintadas en el suelo, agentes 3D)
+  const M3 = !!cfg.T3, T3 = cfg.T3, GIRO = M3 ? null : window.GIRO;
+  const OX = 2095.67, OZ = -109.06; // marco del giro (X este, Y sur, desde El Burro) -> mundo de la maqueta (x, z)
   const D = await (await fetch('data3d/giro_sim.json')).json();
   const $ = (id) => document.getElementById(id);
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const cv = document.createElement('canvas'); cv.id = 'gs-cv'; const g = cv.getContext('2d');
   const cv2 = document.createElement('canvas'); cv2.id = 'gs-cv2'; const g2 = cv2.getContext('2d'); cv2.style.zIndex = 7;
-  document.body.append(cv, cv2);
+  document.body.append(cv, cv2); if (M3) cv.style.display = 'none';
+  let v3p = null;
+  const proy = M3 ? (X, Y, Z) => { if (!v3p) v3p = new T3.THREE.Vector3(); v3p.set(X + OX, Z, Y + OZ); const d = v3p.distanceTo(T3.camera.position); v3p.project(T3.camera); if (v3p.z > 1 || v3p.z < -1) return null; return [(v3p.x + 1) / 2 * W, (1 - v3p.y) / 2 * Hh, d]; } : (X, Y, Z) => GIRO.proyectar(X, Y, Z);
 
   /* ---------- red ---------- */
   const N = D.nodos, S = D.seg, ADJ = N.map(() => []);
@@ -139,7 +143,7 @@ export async function iniciarSimulacion() {
   // tráfico y peatones (movimiento natural sobre la sintaxis espacial)
   const red = (tipo, n, veh, vel, beta, giro) => { for (let k = 0; k < n; k++) { const s = (veh ? sorteoVeh : sorteoPea)(); A.push({ tipo, red: true, veh, s, dir: Math.random() < 0.5 ? 1 : -1, d: Math.random() * S[s].len, vel: vel * (0.8 + Math.random() * 0.4), beta, giro, vis: true }); } contar(tipo, n); };
   red('carro', 520, true, 9, 1.6, 0.6); red('moto', 180, true, 11, 1.4, 0.8); red('camion', 60, true, 7, 1.2, 0.5); red('bici', 90, false, 4.5, 1.6, 0.7); red('peaton', 900, false, 1.3, 2.2, 0.9); // [SUP]
-  // P1: custodios en el borde de cada humedal
+  // P1: habitantes y colectivos ambientales en el borde de cada humedal
   const HUM = D.humedales.map(h => ({ ...h, l: linea(h.borde) }));
   const P1n = { 'Humedal El Burro': [10, 8], 'Humedal La Vaca': [6, 5], 'Humedal de Techo': [4, 3] }; // [SUP] habitantes, colectivos
   const AVES_H = { 'Humedal El Burro': { tingua: 6, garza: 8, pato: 10, monjita: 16 }, 'Humedal La Vaca': { tingua: 3, garza: 4, pato: 6, monjita: 8 }, 'Humedal de Techo': { tingua: 1, garza: 2, pato: 4, monjita: 6 } }; // [SUP]
@@ -179,6 +183,7 @@ export async function iniciarSimulacion() {
   }
   contar('huertero', HUE.length * 3); contar('abeja', HUE.length * 30); contar('copeton', HUE.length * 6); contar('mirla', HUE.length * 3); contar('colibri', HUE.length * 2); contar('lombriz', HUE.length * 2000);
   const bicis = rEntrega.map((l, i) => ({ tipo: 'recu', entrega: i, lin: l, d: 0, sentido: 1, vis: false })); // bicicargas de hongos a las cocinas (se ven como recuperadores)
+  A.push(...bicis);
 
   /* ---------- interfaz ---------- */
   const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: true };
@@ -214,9 +219,9 @@ export async function iniciarSimulacion() {
   const tl = $('gs-t'); tl.value = st0.t; tl.oninput = () => { st0.t = +tl.value; };
   $('gs-play').onclick = () => { st0.play = !st0.play; $('gs-play').textContent = st0.play ? '❚❚' : '▶'; };
   izq.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { st0.vel = +b.dataset.v; izq.querySelectorAll('[data-v]').forEach(x => x.classList.toggle('on', x === b)); });
-  izq.querySelectorAll('#gs-capa button').forEach(b => b.onclick = () => { st0.capa = b.dataset.c; izq.querySelectorAll('#gs-capa button').forEach(x => x.classList.toggle('on', x === b)); vCache = -1; });
-  $('gs-ag').onclick = (e) => { st0.agentes = !st0.agentes; e.currentTarget.classList.toggle('on', st0.agentes); };
-  $('gs-cv-b').onclick = (e) => { st0.conv = !st0.conv; e.currentTarget.classList.toggle('on', st0.conv); vCache = -1; };
+  izq.querySelectorAll('#gs-capa button').forEach(b => b.onclick = () => { st0.capa = b.dataset.c; izq.querySelectorAll('#gs-capa button').forEach(x => x.classList.toggle('on', x === b)); vCache = -1; if (M3) capa3D(); });
+  $('gs-ag').onclick = (e) => { st0.agentes = !st0.agentes; e.currentTarget.classList.toggle('on', st0.agentes); if (M3) for (const m of Object.values(MALLAS)) m.visible = st0.agentes; };
+  $('gs-cv-b').onclick = (e) => { st0.conv = !st0.conv; e.currentTarget.classList.toggle('on', st0.conv); vCache = -1; if (M3) ZONAS3D.visible = st0.conv; };
 
   /* ---------- capa fija por ángulo: calles con sintaxis espacial y zonas de las convenciones ---------- */
   let vCache = -1, W = 0, Hh = 0, dpr = 1;
@@ -253,7 +258,7 @@ export async function iniciarSimulacion() {
     }
   }
   function etiquetas() { // tarjetas P1-P4 encima de los agentes
-    const P = GIRO.proyectar, L = [];
+    const P = proy, L = [];
     if (st0.conv) {
       for (const h of HUM) { const q = h.borde[Math.floor(h.borde.length * 0.15)]; L.push(['P1', q, h.n.replace('Humedal ', '')]); }
       L.push(['P2', BIO, 'junto a Corabastos']); COC.forEach((c, i) => L.push(['P3', c.p, 'Cocina ' + (i + 1)])); HUE.forEach((h, i) => L.push(['P4', h.c, 'Lote ' + (i + 1)]));
@@ -363,7 +368,7 @@ export async function iniciarSimulacion() {
   /* ---------- dibujo de agentes ---------- */
   function dibujarAgentes() {
     g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, W, Hh);
-    const P = GIRO.proyectar, foco = Hh / (2 * Math.tan(Math.atan(18 / 20) / 1.7778)); // aprox. píxeles por metro a 1 m
+    const P = proy, foco = Hh / (2 * Math.tan(Math.atan(18 / 20) / 1.7778)); // aprox. píxeles por metro a 1 m
     const activos = {};
     if (st0.agentes) {
       const lotes = {};
@@ -389,14 +394,81 @@ export async function iniciarSimulacion() {
     return activos;
   }
 
+  /* ---------- modo maqueta 3D: calles pintadas en el suelo, zonas de las convenciones y agentes 3D ---------- */
+  const MALLAS = {}, Y0 = 2.0;
+  let ZONAS3D = null, CINTAS = null, COLS = null, capa3D = () => {}, actualizar3D = () => ({});
+  if (M3) {
+    window.KEN3D = T3; // para depurar desde la consola
+    const THREE = T3.THREE, rgb = (v) => { const c = DEPTHMAP[Math.min(DEPTHMAP.length - 1, Math.floor(v * DEPTHMAP.length))]; return [c[0] / 255, c[1] / 255, c[2] / 255]; };
+    // calles: cintas sobre el suelo con el ancho de la vía y el color de DepthmapX
+    const pos = [], cI = [], cC = [], idx = [];
+    const ANCHO = { 5: 16, 4: 13, 3: 10.5, 2: 8.5 };
+    for (const s of S) {
+      const m = s.p[Math.floor(s.p.length / 2)]; if (Math.hypot(m[0], m[1]) > 3800 || s.p.length < 2) continue;
+      const w = (s.v ? (ANCHO[s.j] || 6.5) : 2.6) / 2, ci = rgb(s.i), cc = rgb(s.c), base = pos.length / 3, n = s.p.length;
+      for (let k = 0; k < n; k++) {
+        const a = s.p[Math.max(0, k - 1)], b = s.p[Math.min(n - 1, k + 1)]; let dx = b[0] - a[0], dy = b[1] - a[1]; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+        const x = s.p[k][0] + OX, z = s.p[k][1] + OZ;
+        pos.push(x - dy * w, Y0 + s.j * 0.01, z + dx * w, x + dy * w, Y0 + s.j * 0.01, z - dx * w);
+        cI.push(...ci, ...ci); cC.push(...cc, ...cc);
+        if (k < n - 1) { const v = base + k * 2; idx.push(v, v + 1, v + 2, v + 1, v + 3, v + 2); }
+      }
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); COLS = { i: new Float32Array(cI), c: new Float32Array(cC) };
+    geo.setAttribute('color', new THREE.BufferAttribute(COLS.i.slice(), 3)); geo.setIndex(idx);
+    CINTAS = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.82, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }));
+    CINTAS.renderOrder = 2; CINTAS.frustumCulled = false; T3.scene.add(CINTAS);
+    capa3D = () => { if (!st0.capa) { CINTAS.visible = false; return; } CINTAS.visible = true; geo.attributes.color.array.set(COLS[st0.capa]); geo.attributes.color.needsUpdate = true; };
+    // convenciones: borde de cuidado de los humedales, biofábrica, cocinas y huertas pintados en el suelo
+    ZONAS3D = new THREE.Group(); T3.scene.add(ZONAS3D);
+    const matZ = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 });
+    const cinta = (pts, w, c, o, cerrada) => { const P = [], I = []; const n = pts.length; for (let k = 0; k < n; k++) { const a = pts[(k - 1 + n) % n], b = pts[(k + 1) % n]; let dx = b[0] - a[0], dy = b[1] - a[1]; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l; const x = pts[k][0] + OX, z = pts[k][1] + OZ; P.push(x - dy * w, Y0 + 0.1, z + dx * w, x + dy * w, Y0 + 0.1, z - dx * w); if (k < n - 1 || cerrada) { const v = k * 2, u = ((k + 1) % n) * 2; I.push(v, v + 1, u, v + 1, u + 1, u); } } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); const m = new THREE.Mesh(g, matZ(c, o)); m.renderOrder = 3; ZONAS3D.add(m); };
+    const relleno = (pts, c, o) => { const sh = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0] + OX, -(p[1] + OZ)))); const g = new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI / 2); g.translate(0, Y0 + 0.08, 0); const m = new THREE.Mesh(g, matZ(c, o)); m.renderOrder = 3; ZONAS3D.add(m); };
+    const circulo = (c, r) => { const pts = []; for (let k = 0; k < 40; k++) pts.push([c[0] + Math.cos(k / 40 * 6.283) * r, c[1] + Math.sin(k / 40 * 6.283) * r]); return pts; };
+    for (const h of HUM) cinta(h.borde, 2.2, CONV.P1.c, 0.9, true);
+    relleno(circulo(BIO, 45), CONV.P2.c, 0.32); cinta(circulo(BIO, 45), 1.5, CONV.P2.c, 0.95, true);
+    for (const c of COC) { relleno(circulo(c.p, 26), CONV.P3.c, 0.32); cinta(circulo(c.p, 26), 1.3, CONV.P3.c, 0.95, true); }
+    for (const h of HUE) { relleno(h.poly, CONV.P4.c, 0.35); cinta(h.poly, 1.2, CONV.P4.c, 0.95, true); }
+    // agentes: cajas para vehículos, cápsulas para personas, esferas para aves y abejas (escala de maqueta: los animales se ven más grandes)
+    const FORMA = { carro: [1.9, 1.5, 4.3], moto: [0.8, 1.3, 2], camion: [2.5, 3.2, 8], bici: [0.7, 1.4, 1.8] };
+    const ALTO = { tingua: 0.6, garza: 1.4, pato: 0.4, monjita: 1.6, copeton: 0.8, mirla: 0.9, colibri: 2.2, abeja: 1.6 };
+    const cuantos = {}; for (const a of A) cuantos[a.tipo] = (cuantos[a.tipo] || 0) + 1;
+    for (const [k, t] of Object.entries(ACT)) {
+      if (!cuantos[k]) continue;
+      let g;
+      if (FORMA[k]) { g = new THREE.BoxGeometry(...FORMA[k]); g.translate(0, FORMA[k][1] / 2, 0); }
+      else if (t.g === 'h') { const nino = k === 'nino', r = nino ? 0.24 : 0.3; g = new THREE.CapsuleGeometry(r, nino ? 0.7 : 1.15, 3, 8); g.translate(0, (nino ? 0.7 : 1.15) / 2 + r, 0); }
+      else { g = new THREE.SphereGeometry(Math.max(0.35, t.r * 0.55), 10, 8); }
+      const col = new THREE.Color(t.c);
+      const m = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial({ color: col, emissive: col.clone().multiplyScalar(0.35) }), cuantos[k]);
+      m.count = 0; m.frustumCulled = false; m.castShadow = !!FORMA[k]; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); T3.scene.add(m); MALLAS[k] = m;
+    }
+    const d = new THREE.Object3D(), n = {};
+    actualizar3D = () => {
+      const activos = {}; for (const k in n) n[k] = 0;
+      for (const a of A) {
+        const m = MALLAS[a.tipo]; if (!m || a.vis === false || a.x === undefined) { if (a.vis !== false && a.x !== undefined) activos[a.tipo] = (activos[a.tipo] || 0) + 1; continue; }
+        activos[a.tipo] = (activos[a.tipo] || 0) + 1;
+        const dx = a.x - (a.px ?? a.x), dy = a.y - (a.py ?? a.y); if (dx * dx + dy * dy > 1e-4) a.rot = Math.atan2(dx, dy); a.px = a.x; a.py = a.y;
+        d.position.set(a.x + OX, Y0 + (ALTO[a.tipo] || 0), a.y + OZ); d.rotation.set(0, a.rot || 0, 0); d.scale.setScalar(ACT[a.tipo].g === 'n' && !FORMA[a.tipo] ? 2.2 : 1); d.updateMatrix();
+        const i = n[a.tipo] = (n[a.tipo] || 0); m.setMatrixAt(i, d.matrix); n[a.tipo] = i + 1;
+      }
+      for (const [k, m] of Object.entries(MALLAS)) { m.count = n[k] || 0; m.instanceMatrix.needsUpdate = true; }
+      g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, W, Hh); etiquetas();
+      return activos;
+    };
+    // cámara inicial: la misma del giro (dron a 260 m, 650 m al norte de El Burro), luego se mueve libre
+    T3.anim = { t: 0, dur: 2.2, p0: T3.camera.position.clone(), p1: new THREE.Vector3(OX, 300, OZ - 720), c0: T3.orbit.target.clone(), c1: new THREE.Vector3(OX, 0, OZ) };
+  }
+
   let ult = performance.now(), tPanel = 0;
   function cuadro() {
     const ahora = performance.now(), dtR = Math.min(0.1, (ahora - ult) / 1000); ult = ahora;
     dpr = Math.min(devicePixelRatio || 1, 2);
     if (W !== innerWidth || Hh !== innerHeight) { W = innerWidth; Hh = innerHeight; for (const c of [cv, cv2]) { c.width = Math.round(W * dpr); c.height = Math.round(Hh * dpr); } vCache = -1; }
-    if (GIRO.v && vCache !== GIRO.v + '|' + GIRO.i) { vCache = GIRO.v + '|' + GIRO.i; dibujarFija(); }
+    if (!M3 && GIRO.v && vCache !== GIRO.v + '|' + GIRO.i) { vCache = GIRO.v + '|' + GIRO.i; dibujarFija(); }
     paso(dtR);
-    const act = dibujarAgentes();
+    const act = M3 ? actualizar3D() : dibujarAgentes();
     if ((tPanel -= dtR) <= 0) {
       tPanel = 0.3;
       const T = st0.t, hh = Math.floor(T / 60), mm = Math.floor(T % 60);

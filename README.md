@@ -25,9 +25,9 @@ Paneles PROPUESTA, CÁMARA y RESULTADOS dentro del simulador (guía del Corte II
 - Datos: `data3d/propuesta.json`, generado con `python tools/propuesta_datos.py` a partir de los nodos del modelo de agentes de Unreal y de los parques. Las cifras sin fuente están marcadas [SUP] en el código.
 
 
-### Simulación sobre el giro (`data3d/giro_sim.js`)
+### Simulación de Kennedy en la maqueta (`giro.html` -> `index.html?modo=kennedy`, `data3d/giro_sim.js`)
 
-Encima del render de Unreal, con la misma cámara, sin cambiar la imagen:
+Dentro de la maqueta 3D (edificios y árboles propios en 2,6 km alrededor de El Burro, malla de Google como contexto), con cámara libre: las calles se pintan en el suelo con la sintaxis espacial, los árboles quedan semitransparentes y los agentes son objetos 3D. El giro renderizado en Unreal sigue en `giro_render.html`.
 
 - **Sintaxis espacial de las calles** (análisis angular de segmentos, método de [DepthmapX](https://github.com/SpaceGroupUCL/depthmapX)): integración o elección angular de radio n, con la escala de color de DepthmapX (azul bajo, rojo alto). Se calcula con `python tools/kennedy_sim_datos.py` sobre las vías de OpenStreetMap de toda Kennedy más 500 m (`tools/kennedy_osm.py` las descarga).
 - **Movimiento natural:** carros, motos, camiones, bicis y peatones eligen en cada cruce el tramo siguiente según la sintaxis espacial (elección para vehículos, integración para peatones) y la continuidad del giro.

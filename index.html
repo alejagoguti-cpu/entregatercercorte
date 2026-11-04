@@ -209,7 +209,7 @@
 <div class="hud" id="hud-c">
   <button id="b-sat" hidden style="display:none">🛰️ Satélite</button>
   <button id="b-todo" class="on"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg>Maqueta 3D</button>
-  <button id="b-giro" onclick="location.href='giro.html'" title="Recorrido 3D libre por toda la localidad de Kennedy"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Render</button>
+  <button id="b-giro" onclick="location.href='giro_render.html'" title="Recorrido 3D libre por toda la localidad de Kennedy"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Render</button>
   <button id="b-splat" hidden style="display:none">🌀 Splat Humedal</button>
   <button id="b-hd" hidden style="display:none">📦 HD</button>
   <button id="b-tour" hidden style="display:none">▶ Tour Kennedy</button>
@@ -846,6 +846,9 @@ const GOOGLE = REALISTA && new URLSearchParams(location.search).get('vista') ===
 const ZON = REALISTA && !GOOGLE, ZONA = { x: 7437, y: 3271, r: 900 }; // coordenadas del modelo (m)
 const enZona = (x, y, margen = 0) => !ZON || (x - ZONA.x) ** 2 + (y - ZONA.y) ** 2 < (ZONA.r + margen) ** 2;
 const MOVIL = QUEST || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (matchMedia('(pointer:coarse)').matches && Math.min(screen.width, screen.height) < 900);
+// ?modo=kennedy (giro.html): simulación de agentes de Kennedy sobre la maqueta (calles pintadas con sintaxis espacial, árboles semitransparentes, sin el tráfico ni el HUD de God's Eye)
+const KEN = new URLSearchParams(location.search).get('modo') === 'kennedy';
+if (KEN) ZONA.r = MOVIL ? 1500 : 2600; // modo Kennedy: edificios y árboles propios en un radio mayor alrededor de El Burro
 if (MOVIL) { LIVIANO = true; MEDIO = true; } // celular: sin sombras ni tráfico pesado, árboles más livianos y sin los modelos pesados, pero CON los edificios del entorno del humedal (archivo recortado de ~3 MB) desde que abre
 const DIA = { // ambiente de día soleado (se usa al crear la escena y al volver de la noche)
   fondo: 0xa9cbe6, niebla: REALISTA ? 0xa3b8cc : 0xcfdde8, densNiebla: REALISTA ? 0.000042 : 0.000055, // realista: bruma azul grisácea suave: los cerros a 10-15 km se ven verdes y azulados (antes la bruma los volvía una franja blanca) // bruma ligera: los cerros a 10-20 km se ven con perspectiva atmosférica // bruma que aclara y desatura lo lejano (perspectiva atmosférica)
@@ -1227,10 +1230,10 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=47'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=50'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
-    const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e);
-    if (QUEST) marcarPaso('trafico');
+    const pTraf = (QUEST || KEN) ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e);
+    if (QUEST || KEN) marcarPaso('trafico');
 
     // edificios del modelo propio: volumen limpio con huellas y alturas reales, sobre el suelo fotográfico de Google
     // edificios en binario por celdas de 1 km (data3d/edif): primero las cercanas a la cámara, el resto en segundo plano
@@ -1269,7 +1272,7 @@ async function initTodoReal() {
     } else if (!GOOGLE) buildWater(THREE, W.filter(w => !w.pts || w.pts.some(p => enZona(p[0], p[1], 200)))); // realista: el agua animada de los humedales sí va (las vías y parques son los de la foto)
     marcarPaso('capas');
     if (new URLSearchParams(location.search).get('solo') === 'malla') { abrirPortada(); return true; } // modo de prueba: suelo, edificios, agua, parques y vías; sin árboles, carros ni aves
-    try { buildPeatones(THREE, N); } catch (e) { console.warn('peatones:', e); }
+    if (!KEN) try { buildPeatones(THREE, N); } catch (e) { console.warn('peatones:', e); }
     T3.avesU = { value: 0 }; T3.avesT = 0;
     // aves 3D (patos, fochas, garzas) repartidas por todos los humedales; si el módulo falla queda el modelo sencillo anterior
     import('./data3d/aves3d.js').then(m => {
@@ -1317,6 +1320,7 @@ async function initTodoReal() {
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...T, t: T.t.filter(t => enZona(t[0], t[1], 100)) } : T, W, lw, T3.env);
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
+        if (KEN && T3.trees && T3.trees.opacidad) T3.trees.opacidad(0.62); // vista de simulación: copas semitransparentes
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
       marcarPaso('arboles'); T3.arbolesOk();
       if (!REALISTA) try { if (!T3.movil) T3.plants = await T3.R.buildNearPlants(T3, W, lw, T3.env, P); } // en celular no se descargan las plantas 3D (varios MB)
@@ -3021,7 +3025,10 @@ $('b-hd').onclick = async () => {
   }
 };
 
-import('./data3d/simulador.js?v=6').then(m => {
+if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
+  const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
+  Promise.all([import('./data3d/giro_sim.js?v=3'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
+} else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({
     T3: () => T3, traf: () => TRAF, peat: () => PEAT, pajaro: () => PAJARO, say, movil: MOVIL,
     mundoALL: (x, z) => dataToLL(x + LC.x, LC.y - z), // [lng, lat] del punto del mundo 3D

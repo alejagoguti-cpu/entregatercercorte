@@ -431,6 +431,14 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
     api.stats = { cerca: n0.join('+'), medio: n1.join('+'), bajos: n2.join('+'), siluetas: nf.join('+') };
   };
   api.update({ position: new THREE.Vector3(1e8, 0, 1e8) }, true);
+  // árboles semitransparentes (vista de simulación: deja ver las calles y los agentes debajo de las copas)
+  api.opacidad = (o) => {
+    const mats = new Set();
+    for (const l of lod) for (const m of [...l.L0, ...l.L1]) (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => mats.add(x));
+    for (const m of [...lejos, ...techos]) mats.add(m.material);
+    for (const m of mats) { m.transparent = false; m.alphaHash = o < 1; m.opacity = o; m.depthWrite = true; m.needsUpdate = true; } // transparencia por tramado: pasa por el mismo camino que lo opaco (sombras y oclusión ambiental)
+    for (const l of lod) for (const m of [...l.L0, ...l.L1]) m.renderOrder = 5; for (const m of [...lejos, ...techos]) m.renderOrder = 5;
+  };
   return api;
 }
 
