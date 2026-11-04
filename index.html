@@ -857,6 +857,7 @@ const DIA = { // ambiente de día soleado (se usa al crear la escena y al volver
   hemiCielo: 0xb4d3ff, hemiSuelo: 0x7a6f4a, hemi: REALISTA ? 1.15 : 0.86, // luz de cielo azulada arriba y rebote cálido del suelo
   solColor: 0xffe6bf, sol: REALISTA ? 2.5 : 3.0, exposicion: 1.0 // sol cálido y fuerte: más contraste entre luz y sombra
 };
+if (KEN) Object.assign(DIA, { niebla: 0xc7d3de, densNiebla: 0.000075, hemiCielo: 0xcfe2ff, hemiSuelo: 0x9a8f72, hemi: 1.45, solColor: 0xfff0d6, sol: 2.7, exposicion: 1.05 }); // luz del giro de Unreal: media mañana clara, sombras abiertas y bruma luminosa
 const LC = { x: 5341.33, y: 3161.9 };
 const lw = (x, y) => [x - LC.x, LC.y - y]; // z invertido: el territorio estaba en espejo (norte/sur al revés)
 window.REN3D = { get T3() { return T3; }, lw, get traf() { return TRAF; }, get peat() { return PEAT; }, get aves() { return AVES; }, get pajaro() { return PAJARO; } }; // acceso para pruebas
@@ -1614,6 +1615,7 @@ function materialEdificios(THREE) {
             }
           }
         }
+        ${KEN ? '{ float lk = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.86, 0.76) * (0.62 + 0.5 * lk), 0.42); } // modo Kennedy: fachadas claras como el render de Unreal' : ''}
       }`);
     if (PBR) sh.fragmentShader = sh.fragmentShader
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
@@ -3027,7 +3029,7 @@ $('b-hd').onclick = async () => {
 
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
-  Promise.all([import('./data3d/giro_sim.js?v=4'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
+  Promise.all([import('./data3d/giro_sim.js?v=6'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
 } else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({
     T3: () => T3, traf: () => TRAF, peat: () => PEAT, pajaro: () => PAJARO, say, movil: MOVIL,

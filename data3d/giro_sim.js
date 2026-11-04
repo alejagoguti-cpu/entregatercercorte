@@ -138,6 +138,7 @@ export async function iniciarSimulacion(cfg = {}) {
   const cerca = (c, r) => [c[0] + (Math.random() - 0.5) * 2 * r, c[1] + (Math.random() - 0.5) * 2 * r];
 
   /* ---------- actores ---------- */
+  const FLUJO = { p: new Float32Array(S.length), v: new Float32Array(S.length) }; // pasos por tramo (análisis de agentes)
   const A = []; const IND = { rondas: 0, residuos: 0, registros: 0, huidas: 0, sustrato: 0, hongos: 0, entregado: 0, degust: 0, visitas: 0, polen: 0, cosecha: 0, humus: 0, lombricesComidas: 0 };
   const CNT = {}; const contar = (t, n) => { CNT[t] = (CNT[t] || 0) + n; };
   // tráfico y peatones (movimiento natural sobre la sintaxis espacial)
@@ -257,8 +258,9 @@ export async function iniciarSimulacion(cfg = {}) {
       for (const h of HUE) poli(h.poly, 'rgba(132,204,22,.22)', CONV.P4.c, 2);
     }
   }
+  const LBL = []; // rectángulos de las etiquetas P1-P4 (para el clic)
   function etiquetas() { // tarjetas P1-P4 encima de los agentes
-    const P = proy, L = [];
+    const P = proy, L = []; LBL.length = 0;
     if (st0.conv) {
       for (const h of HUM) { const q = h.borde[Math.floor(h.borde.length * 0.15)]; L.push(['P1', q, h.n.replace('Humedal ', '')]); }
       L.push(['P2', BIO, 'junto a Corabastos']); COC.forEach((c, i) => L.push(['P3', c.p, 'Cocina ' + (i + 1)])); HUE.forEach((h, i) => L.push(['P4', h.c, 'Lote ' + (i + 1)]));
@@ -269,7 +271,7 @@ export async function iniciarSimulacion(cfg = {}) {
       const c = CONV[k], t1 = k + ' · ' + c.t, t2 = sub + ' · ' + c.h, big = r[2] < 1500;
       const w = big ? Math.max(g2.measureText(t1).width, g2.measureText(t2).width * 0.9) + 20 : g2.measureText(k).width + 14, x = r[0], y = r[1] - (big ? 46 : 26) - (k === 'P2' ? 48 : 0);
       g2.strokeStyle = c.c; g2.lineWidth = 1.2; g2.beginPath(); g2.moveTo(x, r[1]); g2.lineTo(x, y + (big ? 16 : 9)); g2.stroke();
-      g2.fillStyle = 'rgba(8,16,26,.86)'; g2.beginPath(); g2.roundRect(x - w / 2, y - (big ? 16 : 9), w, big ? 32 : 18, 8); g2.fill(); g2.stroke();
+      g2.fillStyle = 'rgba(8,16,26,.86)'; g2.beginPath(); g2.roundRect(x - w / 2, y - (big ? 16 : 9), w, big ? 32 : 18, 8); g2.fill(); g2.stroke(); LBL.push({ k, q, sub, x: x - w / 2, y: y - (big ? 16 : 9), w, h: big ? 32 : 18 });
       g2.fillStyle = c.c; g2.textAlign = 'center';
       if (big) { g2.fillText(t1, x, y - 6); g2.font = '500 10px system-ui,sans-serif'; g2.fillStyle = '#cbd5e1'; g2.fillText(t2, x, y + 8); g2.font = '700 11px system-ui,-apple-system,"Segoe UI",sans-serif'; }
       else g2.fillText(k, x, y);
@@ -286,7 +288,7 @@ export async function iniciarSimulacion(cfg = {}) {
     for (const a of A) {
       if (a.red) { // tráfico y peatones
         a.d += a.vel * dt;
-        while (a.d > S[a.s].len) { const s = S[a.s], nodo = a.dir > 0 ? s.b : s.a, r = enTramo(s, a.dir > 0 ? s.len : 0)[2] + (a.dir > 0 ? 0 : Math.PI); a.d -= s.len; const j = siguiente(a, nodo, r); a.dir = S[j].a === nodo ? 1 : -1; a.s = j; }
+        while (a.d > S[a.s].len) { FLUJO[a.veh ? 'v' : 'p'][a.s]++; const s = S[a.s], nodo = a.dir > 0 ? s.b : s.a, r = enTramo(s, a.dir > 0 ? s.len : 0)[2] + (a.dir > 0 ? 0 : Math.PI); a.d -= s.len; const j = siguiente(a, nodo, r); a.dir = S[j].a === nodo ? 1 : -1; a.s = j; }
         const s = S[a.s], p = enTramo(s, a.dir > 0 ? a.d : s.len - a.d); a.x = p[0]; a.y = p[1];
         if (a.tipo === 'peaton') humanos.push(a);
         continue;
@@ -295,13 +297,13 @@ export async function iniciarSimulacion(cfg = {}) {
         case 'hab': case 'col': {
           const on = enJornada('P1', T - a.ini); a.vis = on; if (!on) break;
           if (a.pausa > 0) { a.pausa -= dtS; if (a.pausa <= 0) { IND.residuos += a.tipo === 'col' ? 0.6 : 0.3; IND.registros += Math.random() < 0.7 ? 1 + Math.floor(Math.random() * 3) : 0; } }
-          else { const m = a.vel * dt; a.d = (a.d + a.sentido * m + a.ronda.l.len) % a.ronda.l.len; IND.rondas += a.vel * dtS * 60 / 1000; a.prox -= m; if (a.prox <= 0) { a.pausa = 4 + Math.random() * 8; a.prox = 70 + Math.random() * 110; } }
+          else { const m = a.vel * dt; a.d = (a.d + a.sentido * m + a.ronda.l.len) % a.ronda.l.len; IND.rondas += a.vel * dtS * 60 / 1000; a.prox -= m; if (a.prox <= 0) { a.pausa = 4 + Math.random() * 8; a.ev = (a.ev || 0) + 1; a.prox = 70 + Math.random() * 110; } }
           const p = sobre(a.ronda.l, a.d); a.x = p[0]; a.y = p[1]; humanos.push(a); break;
         }
         case 'madre': case 'joven': case 'cocinera': case 'huertero': {
           const pk = ACT[a.tipo].p, on = enJornada(pk, T - a.ini); a.vis = on; if (!on) break;
           if (a.pausa > 0) { a.pausa -= dtS; if (a.pausa <= 0) { if (a.tipo === 'madre') IND.hongos += 0.35; if (a.tipo === 'huertero') IND.cosecha += 0.4; } }
-          else if (mover2(a, 0.9, dt)) { a.pausa = 3 + Math.random() * 9; a.obj = a.pol ? puntoEn(a.pol) : cerca(a.zona, a.rz); }
+          else if (mover2(a, 0.9, dt)) { a.pausa = 3 + Math.random() * 9; a.ev = (a.ev || 0) + 1; a.obj = a.pol ? puntoEn(a.pol) : cerca(a.zona, a.rz); }
           humanos.push(a); break;
         }
         case 'recu': {
@@ -312,20 +314,20 @@ export async function iniciarSimulacion(cfg = {}) {
           }
           const on = enJornada('P2', T - a.ini); a.vis = on; if (!on) break;
           a.d += a.sentido * 1.1 * dtT;
-          if (a.d >= a.lin.len) { a.d = a.lin.len; a.sentido = -1; IND.sustrato += 40; } else if (a.d <= 0) { a.d = 0; a.sentido = 1; }
+          if (a.d >= a.lin.len) { a.d = a.lin.len; a.sentido = -1; IND.sustrato += 40; a.ev = (a.ev || 0) + 1; } else if (a.d <= 0) { a.d = 0; a.sentido = 1; }
           const p = sobre(a.lin, a.d); a.x = p[0]; a.y = p[1]; humanos.push(a); break;
         }
         case 'nino': case 'maestra': { // grupos escolares: salen 10:00, degustación 10:30-11:30, regresan
           const l = a.grupo, ida = T >= H(10) && T < H(11, 30), vuelta = T >= H(11, 30) && T < H(12, 30);
           a.vis = ida || vuelta; if (!a.vis) { a.d = a.d0 === undefined ? (a.d0 = a.d) : a.d0; a.fase = 0; break; }
-          if (ida) { if (a.d < l.len) a.d = Math.min(l.len, a.d + 1.1 * dtT); else if (!a.fase) { a.fase = 1; IND.degust++; } }
+          if (ida) { if (a.d < l.len) a.d = Math.min(l.len, a.d + 1.1 * dtT); else if (!a.fase) { a.fase = 1; IND.degust++; a.ev = (a.ev || 0) + 1; } }
           else a.d = Math.max(0, a.d - 1.1 * dtT);
           const p = sobre(l, a.d), j = a.d >= l.len - 0.5 ? 6 : 1; a.x = p[0] + a.off[0] * j; a.y = p[1] + a.off[1] * j; humanos.push(a); break;
         }
         case 'vecino': { // degustación de la tarde 15:00-16:00
           const l = a.lin, ida = T >= H(14, 40) + a.ini && T < H(16), vuelta = T >= H(16) && T < H(16, 40);
           a.vis = ida || vuelta; if (!a.vis) { a.d = 0; a.fase = 0; break; }
-          if (ida) { if (a.d < l.len) a.d = Math.min(l.len, a.d + 1.2 * dtT); else if (!a.fase) { a.fase = 1; IND.degust++; } } else a.d = Math.max(0, a.d - 1.2 * dtT);
+          if (ida) { if (a.d < l.len) a.d = Math.min(l.len, a.d + 1.2 * dtT); else if (!a.fase) { a.fase = 1; IND.degust++; a.ev = (a.ev || 0) + 1; } } else a.d = Math.max(0, a.d - 1.2 * dtT);
           const p = sobre(l, a.d); a.x = p[0]; a.y = p[1]; humanos.push(a); break;
         }
         default: break;
@@ -337,7 +339,7 @@ export async function iniciarSimulacion(cfg = {}) {
       switch (a.tipo) {
         case 'tingua': case 'garza': case 'pato': case 'monjita': {
           const h = cercaHumano(a.x, a.y, a.tipo === 'garza' ? 35 : 25);
-          if (h && !a.huye) { a.huye = 1; IND.huidas++; const dx = a.x - h.x, dy = a.y - h.y, d = Math.hypot(dx, dy) || 1; let o = [a.x + dx / d * 60, a.y + dy / d * 60]; if (!dentroPol(o[0], o[1], a.ave.poly)) o = puntoEn(a.ave.poly); a.obj = o; }
+          if (h && !a.huye) { a.huye = 1; IND.huidas++; a.ev = (a.ev || 0) + 1; const dx = a.x - h.x, dy = a.y - h.y, d = Math.hypot(dx, dy) || 1; let o = [a.x + dx / d * 60, a.y + dy / d * 60]; if (!dentroPol(o[0], o[1], a.ave.poly)) o = puntoEn(a.ave.poly); a.obj = o; }
           if (mover2(a, a.huye ? (a.tipo === 'garza' ? 5 : 2) : a.vel, dt)) { a.huye = 0; a.obj = Math.random() < 0.7 ? cerca([a.x, a.y], 25) : puntoEn(a.ave.poly); if (!dentroPol(a.obj[0], a.obj[1], a.ave.poly)) a.obj = puntoEn(a.ave.poly); }
           break;
         }
@@ -345,18 +347,18 @@ export async function iniciarSimulacion(cfg = {}) {
           a.vis = T >= H(9) && T < H(16); if (!a.vis) { a.x = a.h.colmena[0]; a.y = a.h.colmena[1]; break; }
           if (a.pausa > 0) { a.pausa -= dtS; break; }
           if (!a.obj) a.obj = Math.random() < 0.85 ? a.h.flores[Math.floor(Math.random() * a.h.flores.length)] : cerca(a.h.c, 220);
-          if (mover2(a, 5, dt)) { if (a.obj === a.h.colmena) { a.obj = null; a.pausa = 1 + Math.random() * 2; } else { IND.visitas++; IND.polen += 0.02; a.pausa = 0.5 + Math.random(); a.obj = a.h.colmena; } }
+          if (mover2(a, 5, dt)) { if (a.obj === a.h.colmena) { a.obj = null; a.pausa = 1 + Math.random() * 2; } else { IND.visitas++; IND.polen += 0.02; a.ev = (a.ev || 0) + 1; a.pausa = 0.5 + Math.random(); a.obj = a.h.colmena; } }
           break;
         }
         case 'copeton': case 'mirla': {
           const h = cercaHumano(a.x, a.y, 12);
-          if (h) { const dx = a.x - h.x, dy = a.y - h.y, d = Math.hypot(dx, dy) || 1; a.obj = [a.x + dx / d * 25, a.y + dy / d * 25]; if (!a.huye) { a.huye = 1; IND.huidas++; } }
+          if (h) { const dx = a.x - h.x, dy = a.y - h.y, d = Math.hypot(dx, dy) || 1; a.obj = [a.x + dx / d * 25, a.y + dy / d * 25]; if (!a.huye) { a.huye = 1; IND.huidas++; a.ev = (a.ev || 0) + 1; } }
           if (mover2(a, a.huye ? 6 : a.vel, dt)) { a.huye = 0; a.obj = puntoEn(a.h.poly); if (a.tipo === 'mirla' && Math.random() < 0.15) { IND.lombricesComidas++; } }
           break;
         }
         case 'colibri': {
           if (a.pausa > 0) { a.pausa -= dtS; break; }
-          if (mover2(a, a.vel, dt)) { a.pausa = 0.3 + Math.random() * 0.6; a.obj = a.h.flores[Math.floor(Math.random() * a.h.flores.length)]; IND.visitas++; }
+          if (mover2(a, a.vel, dt)) { a.pausa = 0.3 + Math.random() * 0.6; a.obj = a.h.flores[Math.floor(Math.random() * a.h.flores.length)]; IND.visitas++; a.ev = (a.ev || 0) + 1; }
           break;
         }
       }
@@ -396,16 +398,16 @@ export async function iniciarSimulacion(cfg = {}) {
 
   /* ---------- modo maqueta 3D: calles pintadas en el suelo, zonas de las convenciones y agentes 3D ---------- */
   const MALLAS = {}, Y0 = 2.0;
-  let ZONAS3D = null, CINTAS = null, COLS = null, capa3D = () => {}, actualizar3D = () => ({});
+  let ZONAS3D = null, CINTAS = null, COLS = null, capa3D = () => {}, actualizar3D = () => ({}), flujo3D = () => {}, seleccion = () => {};
   if (M3) {
     window.KEN3D = T3; // para depurar desde la consola
     const THREE = T3.THREE, rgb = (v) => { const c = DEPTHMAP[Math.min(DEPTHMAP.length - 1, Math.floor(v * DEPTHMAP.length))]; return [c[0] / 255, c[1] / 255, c[2] / 255]; };
     // calles: cintas sobre el suelo con el ancho de la vía y el color de DepthmapX
-    const pos = [], cI = [], cC = [], idx = [];
+    const pos = [], cI = [], cC = [], idx = [], RANGO = [];
     const ANCHO = { 5: 16, 4: 13, 3: 10.5, 2: 8.5 };
-    for (const s of S) {
+    for (let si = 0; si < S.length; si++) { const s = S[si];
       const m = s.p[Math.floor(s.p.length / 2)]; if (Math.hypot(m[0], m[1]) > 3800 || s.p.length < 2) continue;
-      const w = (s.v ? (ANCHO[s.j] || 6.5) : 2.6) / 2, ci = rgb(s.i), cc = rgb(s.c), base = pos.length / 3, n = s.p.length;
+      const w = (s.v ? (ANCHO[s.j] || 6.5) : 2.6) / 2, ci = rgb(s.i), cc = rgb(s.c), base = pos.length / 3, n = s.p.length; RANGO.push([si, base, n]);
       for (let k = 0; k < n; k++) {
         const a = s.p[Math.max(0, k - 1)], b = s.p[Math.min(n - 1, k + 1)]; let dx = b[0] - a[0], dy = b[1] - a[1]; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
         const x = s.p[k][0] + OX, z = s.p[k][1] + OZ;
@@ -416,7 +418,7 @@ export async function iniciarSimulacion(cfg = {}) {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); COLS = { i: new Float32Array(cI), c: new Float32Array(cC) };
     geo.setAttribute('color', new THREE.BufferAttribute(COLS.i.slice(), 3)); geo.setIndex(idx);
-    CINTAS = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.82, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }));
+    CINTAS = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }));
     CINTAS.renderOrder = 2; CINTAS.frustumCulled = false; T3.scene.add(CINTAS);
     capa3D = () => { if (!st0.capa) { CINTAS.visible = false; return; } CINTAS.visible = true; geo.attributes.color.array.set(COLS[st0.capa]); geo.attributes.color.needsUpdate = true; };
     // convenciones: borde de cuidado de los humedales, biofábrica, cocinas y huertas pintados en el suelo
@@ -454,8 +456,130 @@ export async function iniciarSimulacion(cfg = {}) {
         const i = n[a.tipo] = (n[a.tipo] || 0); m.setMatrixAt(i, d.matrix); n[a.tipo] = i + 1;
       }
       for (const [k, m] of Object.entries(MALLAS)) { m.count = n[k] || 0; m.instanceMatrix.needsUpdate = true; }
-      g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, W, Hh); etiquetas();
+      g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, W, Hh); etiquetas(); seleccion(1 / 60);
       return activos;
+    };
+
+    // ---- look del giro de Unreal: imagen clara, un poco más saturada y sin viñeta oscura ----
+    T3.renderer.domElement.style.filter = 'saturate(1.12) contrast(1.03) brightness(1.04)';
+    { const gr = document.getElementById('grade'); if (gr) gr.style.display = 'none'; }
+    // ---- capa de flujo de agentes (análisis de agentes, como el "gate count" de DepthmapX): cuántos pasan por cada tramo ----
+    const pf = new Float32Array(pos.length);
+    for (let k = 0; k < pos.length; k += 6) for (let q = 0; q < 3; q++) { const L = pos[k + q], Rr = pos[k + 3 + q], mid = (L + Rr) / 2; pf[k + q] = mid + (L - mid) * 0.36; pf[k + 3 + q] = mid + (Rr - mid) * 0.36; }
+    for (let k = 1; k < pf.length; k += 3) pf[k] += 0.12;
+    const gf = new THREE.BufferGeometry(), colF = new Float32Array(pos.length / 3 * 4);
+    gf.setAttribute('position', new THREE.BufferAttribute(pf, 3)); gf.setAttribute('color', new THREE.BufferAttribute(colF, 4)); gf.setIndex(idx);
+    const FLUJO3D = new THREE.Mesh(gf, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -20 }));
+    FLUJO3D.renderOrder = 3; FLUJO3D.visible = false; FLUJO3D.frustumCulled = false; T3.scene.add(FLUJO3D);
+    flujo3D = () => {
+      if (!st0.flujo) { FLUJO3D.visible = false; return; } FLUJO3D.visible = true;
+      const Fv = FLUJO[st0.flujo], vals = []; for (const r of RANGO) if (Fv[r[0]] > 0) vals.push(Fv[r[0]]); vals.sort((a, b) => a - b);
+      const q = (v) => { let lo = 0, hi = vals.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (vals[m] < v) lo = m + 1; else hi = m; } return lo / Math.max(1, vals.length - 1); };
+      for (const [si, base, n] of RANGO) { const v = Fv[si], cc = v > 0 ? rgb(q(v)) : [0, 0, 0], al = v > 0 ? 0.95 : 0; for (let k = 0; k < n * 2; k++) { const o = (base + k) * 4; colF[o] = cc[0]; colF[o + 1] = cc[1]; colF[o + 2] = cc[2]; colF[o + 3] = al; } }
+      gf.attributes.color.needsUpdate = true;
+    };
+    setInterval(() => flujo3D(), 2000);
+    izq.querySelector('.gs-ley').insertAdjacentHTML('afterend', `<div class="gs-sub">FLUJO DE AGENTES <span>conteo por tramo</span></div>
+      <div class="gs-fila gs-fila3" id="gs-flujo"><button data-f="p">Peatones</button><button data-f="v">Vehículos</button><button data-f="" class="on">Apagar</button></div>`);
+    izq.querySelectorAll('#gs-flujo button').forEach(b => b.onclick = () => { st0.flujo = b.dataset.f; izq.querySelectorAll('#gs-flujo button').forEach(x => x.classList.toggle('on', x === b)); flujo3D(); });
+
+    // ---- clic en un agente o en una convención: ficha con su comportamiento, sus interacciones y su ruta ----
+    const REGLA = {
+      carro: 'Movimiento natural: en cada cruce elige el tramo siguiente según la ELECCIÓN angular (sintaxis espacial) y prefiere seguir derecho.',
+      moto: 'Como los carros, pero gira más y va más rápido: elige por ELECCIÓN angular.', camion: 'Prefiere las vías arteriales (jerarquía alta) y la ELECCIÓN angular; abastece Corabastos.',
+      bici: 'Elige por INTEGRACIÓN angular: calles a mano, con pocos giros.', peaton: 'Movimiento natural: elige por INTEGRACIÓN angular; por eso se concentra en las calles más integradas.',
+      hab: 'En jornada diurna (7:00–11:30) y después del almuerzo (14:00–17:30) recorre el borde del humedal; cada 70–180 m se detiene 4–12 min a revisar el agua y registrar aves.',
+      col: 'Recorre el borde del humedal en las dos jornadas; en cada parada recoge residuos (0,6 kg) y hace registro de aves.',
+      madre: 'En la biofábrica (8:00–12:00 y 13:30–16:30) inocula bolsas con el sustrato de Corabastos y cosecha orellanas.',
+      recu: 'Lleva sustrato orgánico de Corabastos a la biofábrica (40 kg por viaje) y vuelve; a las 9:00 sale la bicicarga con hongos a las cocinas.',
+      joven: 'Aprende el oficio en la biofábrica junto a las madres comunitarias.', cocinera: 'Cocina con los hongos (P2) y la cosecha de las huertas (P4) y atiende la degustación barrial.',
+      nino: 'Sale del colegio a las 10:00 con su maestra, camina a la cocina, prueba los alimentos (10:30–11:30) y regresa.', maestra: 'Acompaña al grupo del colegio a la degustación.',
+      vecino: 'Llega desde su casa a la degustación de la tarde (15:00–16:00).', huertero: 'Siembra, riega y cosecha en el lote baldío (7:00–10:00 y 15:00–17:30).',
+      tingua: 'Se mueve dentro del humedal; si una persona se acerca a menos de 25 m, huye.', garza: 'Camina en el humedal; si una persona se acerca a menos de 35 m, vuela a otra parte.',
+      pato: 'Nada en el humedal; huye si una persona se acerca a menos de 25 m.', monjita: 'Vive en el juncal; huye si una persona se acerca a menos de 25 m.',
+      abeja: 'Entre 9:00 y 16:00 vuela de la colmena a las flores de la huerta (poliniza) y vuelve.', copeton: 'Come semillas en la huerta; huye si un huertero se acerca a 12 m.',
+      mirla: 'Busca lombrices en la huerta; huye si un huertero se acerca a 12 m.', colibri: 'Visita las flores de la huerta muy rápido (néctar).'
+    };
+    const INTER = {
+      P1: 'Agente–agente: las personas que recorren el borde hacen que tinguas, garzas, patos y monjitas se alejen. Agente–entorno: cada parada recoge residuos y registra aves en el sendero de borde, a 22 m del agua.',
+      P2: 'Corabastos (entorno) produce el residuo orgánico; los recuperadores lo llevan a la biofábrica; las madres comunitarias y los jóvenes lo convierten en orellanas; a las 9:00 las bicicargas las llevan a las cocinas (P3).',
+      P3: 'Las cocineras cocinan con hongos (P2) y cosecha de huertas (P4); los niños llegan a las 10:30 y los vecinos a las 15:00 caminando por las calles más integradas.',
+      P4: 'Las abejas polinizan las flores de la huerta; copetones y mirlas comen semillas y lombrices y se alejan de los huerteros; las lombrices convierten el compost en humus.'
+    };
+    const estado = (a) => a.vis === false ? 'Fuera de jornada' : a.huye ? 'Huyendo de una persona' : a.pausa > 0 ? ({ hab: 'Detenido: revisa el agua y registra aves', col: 'Detenido: recoge residuos', madre: 'Inoculando o cosechando', joven: 'Aprendiendo', cocinera: 'Cocinando', huertero: 'Sembrando o regando', abeja: 'En una flor', colibri: 'Tomando néctar' }[a.tipo] || 'Detenido')
+      : a.red ? 'Circulando por ' + (S[a.s].v ? 'una vía' : 'un andén') + ' · integración ' + Math.round(S[a.s].i * 100) + ' % · elección ' + Math.round(S[a.s].c * 100) + ' %' : (a.sentido < 0 ? 'De regreso' : a.lin || a.grupo || a.ronda ? 'En camino' : 'Moviéndose');
+    const RUTA3D = new THREE.Group(); T3.scene.add(RUTA3D);
+    const limpiarRuta = () => { while (RUTA3D.children.length) { const m = RUTA3D.children.pop(); m.geometry.dispose(); m.material.dispose(); } };
+    const trazo = (pts, w, color, cerrada, grupo = RUTA3D) => {
+      if (!pts || pts.length < 2) return; const P = [], I = [], n = pts.length;
+      for (let k = 0; k < n; k++) { const a = pts[cerrada ? (k - 1 + n) % n : Math.max(0, k - 1)], b = pts[cerrada ? (k + 1) % n : Math.min(n - 1, k + 1)]; let dx = b[0] - a[0], dy = b[1] - a[1]; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l; const x = pts[k][0] + OX, z = pts[k][1] + OZ; P.push(x - dy * w, Y0 + 0.35, z + dx * w, x + dy * w, Y0 + 0.35, z - dx * w); if (k < n - 1 || cerrada) { const v = k * 2, u = ((k + 1) % n) * 2; I.push(v, v + 1, u, v + 1, u + 1, u); } }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I);
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -30 })); m.renderOrder = 6; m.frustumCulled = false; grupo.add(m); return m;
+    };
+    const ficha = document.createElement('div'); ficha.id = 'gs-ficha'; document.body.appendChild(ficha);
+    const fst = document.createElement('style'); fst.textContent = `#gs-ficha{position:fixed;z-index:12;left:50%;bottom:96px;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));padding:13px 14px;border-radius:14px;background:rgba(8,16,26,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(125,211,252,.3);color:#e2f3ff;font:12px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;display:none}
+      #gs-ficha.on{display:block}#gs-ficha h4{margin:0 26px 2px 0;font-size:14px;display:flex;gap:8px;align-items:center}#gs-ficha h4 b{font-size:10px;padding:2px 7px;border-radius:6px;color:#04121c}
+      #gs-ficha .es{color:#7dd3fc;font-weight:600;margin:4px 0}#gs-ficha p{margin:4px 0;color:#cbd5e1}#gs-ficha .bt{display:flex;gap:6px;margin-top:8px}#gs-ficha button{height:30px;padding:0 12px;border:none;border-radius:8px;background:rgba(255,255,255,.08);color:#e2f3ff;font:700 10px system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}
+      #gs-ficha button.on{background:#7dd3fc;color:#04121c}#gs-ficha .x{position:absolute;right:8px;top:8px;width:26px;padding:0}
+      @media(max-width:760px){#gs-ficha{bottom:calc(max(18px,env(safe-area-inset-bottom)) + 56px)}}`; document.head.appendChild(fst);
+    let SEL = null;
+    const cerrarFicha = () => { SEL = null; ficha.classList.remove('on'); limpiarRuta(); };
+    const volar = (x, y, dist) => { const t = new THREE.Vector3(x + OX, 0, y + OZ), c = T3.camera.position, v = c.clone().sub(T3.orbit.target); v.setLength(dist); T3.anim = { t: 0, dur: 1.2, p0: c.clone(), p1: t.clone().add(v), c0: T3.orbit.target.clone(), c1: t }; };
+    function abrirAgente(a) {
+      limpiarRuta(); const t = ACT[a.tipo], col = t.c;
+      SEL = { a, seguir: true, rastro: [], tR: 0 };
+      if (a.ronda) trazo(a.ronda.l.p, 1.4, col, true);
+      else if (a.lin) trazo(a.lin.p, 1.4, col);
+      else if (a.grupo) trazo(a.grupo.p, 1.4, col);
+      else if (a.pol) trazo(a.pol, 1, col, true);
+      else if (a.zona) { const pts = []; for (let k = 0; k < 40; k++) pts.push([a.zona[0] + Math.cos(k / 40 * 6.283) * a.rz, a.zona[1] + Math.sin(k / 40 * 6.283) * a.rz]); trazo(pts, 1, col, true); }
+      else if (a.ave) trazo(a.ave.poly, 1, col, true);
+      else if (a.h) { if (a.tipo === 'abeja' || a.tipo === 'colibri') for (const fl of a.h.flores) trazo([a.h.colmena, fl], 0.5, col); trazo(a.h.poly, 1, col, true); }
+      ficha.innerHTML = `<button class="x" aria-label="Cerrar">✕</button><h4>${t.n}${t.p ? `<b style="background:${CONV[t.p].c}">${t.p}</b>` : ''}</h4>
+        <div class="es" id="gs-f-es">${estado(a)}</div><p>${REGLA[a.tipo] || ''}</p><p id="gs-f-ev"></p>
+        <div class="bt"><button id="gs-f-seg" class="on">Seguir con la cámara</button></div>`;
+      ficha.classList.add('on'); ficha.querySelector('.x').onclick = cerrarFicha;
+      ficha.querySelector('#gs-f-seg').onclick = (e) => { SEL.seguir = !SEL.seguir; e.currentTarget.classList.toggle('on', SEL.seguir); };
+      if (a.x !== undefined) volar(a.x, a.y, a.red ? 140 : 90);
+    }
+    function abrirConv(lb) {
+      limpiarRuta(); SEL = null; const k = lb.k, cv = CONV[k], q = lb.q;
+      const actores = Object.keys(ACT).filter(t => ACT[t].p === k).map(t => `${ACT[t].n} (${(CNT[t] || 0).toLocaleString('es-CO')})`).join(' · ');
+      if (k === 'P1') { const h = HUM.reduce((b, h) => Math.hypot(h.borde[0][0] - q[0], h.borde[0][1] - q[1]) < Math.hypot(b.borde[0][0] - q[0], b.borde[0][1] - q[1]) ? h : b, HUM[0]); trazo(h.l.p, 2.2, cv.c, true); trazo(h.poly, 1, '#7dd3fc', true); }
+      if (k === 'P2') { trazo(rRecu.p, 2, cv.c); rEntrega.forEach(l => trazo(l.p, 1.6, CONV.P3.c)); }
+      if (k === 'P3') { for (const a of A) if ((a.tipo === 'maestra' && a.grupo) || (a.tipo === 'vecino' && a.ini < 2)) trazo((a.grupo || a.lin).p, 1.4, ACT[a.tipo].c); rEntrega.forEach(l => trazo(l.p, 1.4, CONV.P2.c)); }
+      if (k === 'P4') { const h = HUE.reduce((b, h) => Math.hypot(h.c[0] - q[0], h.c[1] - q[1]) < Math.hypot(b.c[0] - q[0], b.c[1] - q[1]) ? h : b, HUE[0]); for (const fl of h.flores) trazo([h.colmena, fl], 0.6, ACT.abeja.c); trazo(h.poly, 1.4, cv.c, true); }
+      ficha.innerHTML = `<button class="x" aria-label="Cerrar">✕</button><h4><b style="background:${cv.c}">${k}</b>${cv.t}</h4>
+        <div class="es">${lb.sub} · ${cv.h}</div><p><b>Actores:</b> ${actores}</p><p><b>Interacciones:</b> ${INTER[k]}</p><p style="color:#94a3b8">Las líneas de color muestran las rutas de sus agentes. Toca un agente para ver cómo se comporta.</p>`;
+      ficha.classList.add('on'); ficha.querySelector('.x').onclick = cerrarFicha;
+      volar(q[0], q[1], 420);
+    }
+    let pd = null; const el = T3.renderer.domElement;
+    el.addEventListener('pointerdown', (e) => { pd = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+    el.addEventListener('pointerup', (e) => {
+      if (!pd || Math.hypot(e.clientX - pd.x, e.clientY - pd.y) > 6 || performance.now() - pd.t > 500) return;
+      const x = e.clientX, y = e.clientY;
+      for (const lb of LBL) if (x >= lb.x && x <= lb.x + lb.w && y >= lb.y && y <= lb.y + lb.h) { abrirConv(lb); return; }
+      let best = null, bd = 26 * 26;
+      for (const a of A) { if (a.vis === false || a.x === undefined) continue; const r = proy(a.x, a.y, 1.5); if (!r || r[2] > 2500) continue; const d = (r[0] - x) ** 2 + (r[1] - y) ** 2; if (d < bd) { bd = d; best = a; } }
+      if (best) abrirAgente(best);
+    });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFicha(); });
+    window.KENSIM = { A, abrirAgente, proy }; // para depurar
+    let tFicha = 0, rastroM = null;
+    seleccion = (dt) => {
+      if (!SEL) return; const a = SEL.a;
+      if (a.x !== undefined && a.vis !== false) {
+        if (SEL.seguir && !T3.anim && SEL.px !== undefined) { const dx = a.x - SEL.px, dz = a.y - SEL.py; if (Math.abs(dx) + Math.abs(dz) < 60) { T3.orbit.target.x += dx; T3.orbit.target.z += dz; T3.camera.position.x += dx; T3.camera.position.z += dz; } }
+        SEL.px = a.x; SEL.py = a.y;
+        if (a.red || a.ave || a.tipo === 'copeton' || a.tipo === 'mirla') { const u = SEL.rastro[SEL.rastro.length - 1]; if (!u || Math.hypot(u[0] - a.x, u[1] - a.y) > 3) { SEL.rastro.push([a.x, a.y]); if (SEL.rastro.length > 120) SEL.rastro.shift(); } }
+      }
+      if ((tFicha -= dt) <= 0) {
+        tFicha = 0.3; const es = document.getElementById('gs-f-es'), ev = document.getElementById('gs-f-ev');
+        if (es) es.textContent = estado(a);
+        if (ev) ev.textContent = a.ev ? 'Lo que ha hecho hoy: ' + a.ev + ({ hab: ' paradas de monitoreo', col: ' paradas de limpieza', recu: ' viajes con sustrato', abeja: ' flores visitadas', colibri: ' flores visitadas', nino: ' degustación', vecino: ' degustación', madre: ' tareas en la biofábrica', huertero: ' tareas en la huerta', tingua: ' huidas', garza: ' huidas', pato: ' huidas', monjita: ' huidas', copeton: ' huidas', mirla: ' huidas' }[a.tipo] || ' eventos') : '';
+        if (SEL.rastro.length > 1) { if (rastroM) { RUTA3D.remove(rastroM); rastroM.geometry.dispose(); rastroM.material.dispose(); } rastroM = trazo(SEL.rastro, 1.3, ACT[a.tipo].c); }
+      }
     };
     // botones de cámara: ángulo (bajo, oblicuo, planta), girar y acercar, alrededor del punto que se mira
     izq.insertAdjacentHTML('afterbegin', `<div class="gs-sub" style="margin-top:0">ÁNGULO DE VISIÓN <span>arrastra para girar</span></div>
