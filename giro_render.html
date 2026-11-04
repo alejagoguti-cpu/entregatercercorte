@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Kennedy 360</title>
-<meta name="description" content="Giro fotorrealista de Kennedy (Bogotá) alrededor del humedal El Burro">
+<meta name="description" content="Giro fotorrealista de toda la localidad de Kennedy (Bogotá)">
 <link rel="icon" href="data:,">
 <style>
   :root{--fondo:#060b12;--panel:rgba(8,16,26,.72);--borde:rgba(125,211,252,.22);--texto:#e2f3ff;--suave:#94a3b8;--acento:#7dd3fc;--verde:#34d399}
@@ -68,30 +68,50 @@
   <div class="tarjeta">
     <div class="marca"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><span>REN3D</span></div>
     <h1>Kennedy <span>360</span></h1>
-    <p>Vista fotorrealista alrededor del humedal El Burro · Bogotá</p>
+    <p>Vista fotorrealista de toda la localidad · Bogotá</p>
     <div class="barra"><i id="cargaBarra"></i></div>
     <div id="cargaTxt">Cargando vistas…</div>
   </div>
 </div>
 
-<div class="chip" id="titulo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--acento)"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><div><b>Kennedy 360</b><small>Humedal El Burro · Bogotá</small></div></div>
+<div class="chip" id="titulo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--acento)"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><div><b>Kennedy 360</b><small>Localidad completa · Bogotá</small></div></div>
 <div class="chip" id="grados">0°</div>
 
 <div id="barraInf">
   <button class="btn redondo" id="bIzq" aria-label="Girar a la izquierda"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
   <button class="btn" id="bAuto" aria-label="Giro automático"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg><span class="txt">Girar</span></button>
   <button class="btn redondo" id="bDer" aria-label="Girar a la derecha"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+  <button class="btn on" id="bLimite" aria-label="Límite de la localidad"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 3"><path d="M4 7 9 4l7 2 4 5-3 8-8 1-5-6z"/></svg><span class="txt">Límite</span></button>
   <a class="btn principal" id="bMaqueta" href="./index.html?modo=kennedy"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><span class="txt">Maqueta 3D</span></a>
 </div>
-<div id="ayuda"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg><span>Arrastra para girar alrededor del humedal</span></div>
+<div id="ayuda"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg><span>Arrastra para girar alrededor de Kennedy</span></div>
 <div id="ficha"><button class="btn redondo cerrar" id="fCerrar" aria-label="Cerrar">✕</button><h2 id="fTit"></h2><p id="fTxt"></p></div>
 <div id="atrib">Imágenes 3D: Google · Render: Unreal Engine + Cesium</div>
 
 <script>
 (function () {
   'use strict';
-  // ---- datos del giro (deben coincidir con Scripts/armar_escena.py del proyecto Kennedy360) ----
-  const G = { N: 72, RADIO: 650, ALTO: 260, OBJ_Z: 25, FOCAL: 20, SENSOR_W: 36, ASPECTO: 16 / 9, LAT: 4.640683, LON: -74.149778 };
+  // ---- datos del giro (deben coincidir con Scripts/giro_kennedy.py del proyecto Kennedy360) ----
+  // dron en órbita alrededor del centro de la localidad (CX, CY; m, X este, Y sur desde El Burro); mira a un punto corrido CORRE m hacia él
+  const G = { N: 72, CX: -250, CY: 1225, RADIO: 7000, ALTO: 3500, CORRE: 1500, OBJ_Z: 0, DP: 2.2, FOCAL: 24, SENSOR_W: 36, ASPECTO: 16 / 9, LAT: 4.640683, LON: -74.149778 };
+  // cámara del ángulo i: posición, adelante, derecha y arriba (unitarios)
+  function camara(i) {
+    const a = 2 * Math.PI * i / G.N, s = Math.sin(a), c = Math.cos(a);
+    const cx = G.CX + s * G.RADIO, cy = G.CY - c * G.RADIO, cz = G.ALTO;
+    // dirección al objetivo + DP (calibración medida sobre el render: el límite OSM calza con el río Bogotá con +2,2°)
+    let fx = G.CX + s * G.CORRE - cx, fy = G.CY - c * G.CORRE - cy; const hz = Math.hypot(fx, fy), pt = Math.atan2(G.OBJ_Z - cz, hz) + G.DP * Math.PI / 180;
+    fx = fx / hz * Math.cos(pt); fy = fy / hz * Math.cos(pt); const fz = Math.sin(pt);
+    let rx = -fy, ry = fx; const rl = Math.hypot(rx, ry); rx /= rl; ry /= rl;
+    let ux = -fz * fx, uy = -fz * fy, uz = 1 - fz * fz; const ul = Math.hypot(ux, uy, uz); ux /= ul; uy /= ul; uz /= ul;
+    const th = (G.SENSOR_W / 2) / G.FOCAL;
+    return { cx, cy, cz, fx, fy, fz, rx, ry, ux, uy, uz, th, tv: th / G.ASPECTO };
+  }
+  // punto (X este, Y sur, Z arriba; m) -> fracción del cuadro [u, v, profundidad]
+  function aCuadro(k, X, Y, Z) {
+    const dx = X - k.cx, dy = Y - k.cy, dz = Z - k.cz, z = dx * k.fx + dy * k.fy + dz * k.fz;
+    if (z < 5) return null;
+    return [0.5 + (dx * k.rx + dy * k.ry) / z / (2 * k.th), 0.5 - (dx * k.ux + dy * k.uy + dz * k.uz) / z / (2 * k.tv), z];
+  }
   const MXg = 111320 * Math.cos(4.63 * Math.PI / 180), MYg = 110540;
   // puntos del territorio (lat, lng reales; alto de la etiqueta en m)
   const PUNTOS = [ // OpenStreetMap (data3d/kennedy.json)
@@ -160,7 +180,7 @@
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(im, ox, oy, w, h);
     const dpr = W / innerWidth; encuadre = { ox: ox / dpr, oy: oy / dpr, w: w / dpr, h: h / dpr };
-    ponerMarcas(); GIRO.v++;
+    pintarLimite(); ponerMarcas(); GIRO.v++;
     $('grados').textContent = Math.round(actual * 360 / G.N) + '°';
   }
 
@@ -174,24 +194,34 @@
     return d;
   });
   function ponerMarcas() {
-    const a = 2 * Math.PI * actual / G.N;
-    const cx = Math.sin(a) * G.RADIO, cy = -Math.cos(a) * G.RADIO, cz = G.ALTO;
-    let fx = -cx, fy = -cy, fz = G.OBJ_Z - cz; const fl = Math.hypot(fx, fy, fz); fx /= fl; fy /= fl; fz /= fl;
-    let rx = -fy, ry = fx; const rl = Math.hypot(rx, ry); rx /= rl; ry /= rl;          // derecha de la cámara
-    const ux = -fz * fx, uy = -fz * fy, uz = 1 - fz * fz; const ul = Math.hypot(ux, uy, uz); // arriba de la cámara
-    const th = (G.SENSOR_W / 2) / G.FOCAL, tv = th / G.ASPECTO;
-    PUNTOS.forEach((p, i) => {
-      const dx = p.X - cx, dy = p.Y - cy, dz = p.z - cz;
-      const z = dx * fx + dy * fy + dz * fz;
-      const x = (dx * rx + dy * ry) / z, y = (dx * ux + dy * uy + dz * uz) / ul / z;
-      const u = 0.5 + x / (2 * th), v = 0.5 - y / (2 * tv);
-      const sx = encuadre.ox + u * encuadre.w, sy = encuadre.oy + v * encuadre.h;
-      const t = $('titulo').getBoundingClientRect();
-      const sobreTitulo = sx < t.right + 90 && sy < t.bottom + 50; // no se monta sobre el título
-      const dentro = z > 0 && sx > 20 && sx < innerWidth - 20 && sy > 60 && sy < innerHeight - 90 && !sobreTitulo;
-      pins[i].classList.toggle('oculto', !dentro);
-      pins[i].style.left = sx + 'px'; pins[i].style.top = sy + 'px';
+    const k = camara(actual), t = $('titulo').getBoundingClientRect(), puestas = [];
+    // los más cercanos primero; una etiqueta que se monta sobre otra ya puesta se esconde
+    PUNTOS.map((p, i) => ({ p, i, q: aCuadro(k, p.X, p.Y, p.z) })).sort((a, b) => (a.q ? a.q[2] : 1e9) - (b.q ? b.q[2] : 1e9)).forEach(({ i, q }) => {
+      const el = pins[i];
+      if (!q) { el.classList.add('oculto'); return; }
+      const sx = encuadre.ox + q[0] * encuadre.w, sy = encuadre.oy + q[1] * encuadre.h;
+      const w = el.offsetWidth || 120, h = 34, r = { l: sx - w / 2, r: sx + w / 2, t: sy - h - 26, b: sy - 26 };
+      const sobreTitulo = r.l < t.right + 8 && r.t < t.bottom + 8;
+      const choca = puestas.some(o => r.l < o.r + 6 && r.r > o.l - 6 && r.t < o.b + 4 && r.b > o.t - 4);
+      const dentro = r.l > 8 && r.r < innerWidth - 8 && r.t > 8 && sy < innerHeight - 90 && !sobreTitulo && !choca;
+      el.classList.toggle('oculto', !dentro);
+      if (dentro) puestas.push(r);
+      el.style.left = sx + 'px'; el.style.top = sy + 'px';
     });
+  }
+  // límite de la localidad (OSM), línea fina pintada sobre la imagen
+  let LIMITE = null, verLimite = true;
+  fetch('./data3d/kennedy.json').then(r => r.json()).then(d => { LIMITE = d.limite.map(([lng, lat]) => [(lng - G.LON) * MXg, -(lat - G.LAT) * MYg]); dirty = true; }).catch(() => {});
+  function pintarLimite() {
+    if (!LIMITE || !verLimite) return;
+    const k = camara(actual), dpr = cv.width / innerWidth;
+    ctx.save(); ctx.lineJoin = 'round';
+    ctx.beginPath();
+    LIMITE.forEach(([X, Y], j) => { const q = aCuadro(k, X, Y, 0); if (!q) return; const x = (encuadre.ox + q[0] * encuadre.w) * dpr, y = (encuadre.oy + q[1] * encuadre.h) * dpr; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(6,12,20,.35)'; ctx.lineWidth = 4 * dpr; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,244,214,.9)'; ctx.lineWidth = 1.6 * dpr; ctx.setLineDash([7 * dpr, 5 * dpr]); ctx.stroke();
+    ctx.restore();
   }
 
   // ---- cámara del render para otras capas (data3d/giro_sim.js): proyecta un punto X este, Y sur, Z arriba (m) a la pantalla ----
@@ -199,15 +229,9 @@
   {
     let ci = -1, k = null;
     GIRO.proyectar = (X, Y, Z) => {
-      if (ci !== actual) { ci = actual; const a = 2 * Math.PI * actual / G.N, cx = Math.sin(a) * G.RADIO, cy = -Math.cos(a) * G.RADIO, cz = G.ALTO;
-        let fx = -cx, fy = -cy, fz = G.OBJ_Z - cz; const fl = Math.hypot(fx, fy, fz); fx /= fl; fy /= fl; fz /= fl;
-        let rx = -fy, ry = fx; const rl = Math.hypot(rx, ry); rx /= rl; ry /= rl;
-        const ux = -fz * fx, uy = -fz * fy, uz = 1 - fz * fz, ul = Math.hypot(ux, uy, uz), th = (G.SENSOR_W / 2) / G.FOCAL;
-        k = { cx, cy, cz, fx, fy, fz, rx, ry, ux: ux / ul, uy: uy / ul, uz: uz / ul, th, tv: th / G.ASPECTO }; }
-      const dx = X - k.cx, dy = Y - k.cy, dz = Z - k.cz, z = dx * k.fx + dy * k.fy + dz * k.fz;
-      if (z < 5) return null;
-      const u = 0.5 + (dx * k.rx + dy * k.ry) / z / (2 * k.th), v = 0.5 - (dx * k.ux + dy * k.uy + dz * k.uz) / z / (2 * k.tv);
-      return [encuadre.ox + u * encuadre.w, encuadre.oy + v * encuadre.h, z];
+      if (ci !== actual) { ci = actual; k = camara(actual); }
+      const q = aCuadro(k, X, Y, Z);
+      return q && [encuadre.ox + q[0] * encuadre.w, encuadre.oy + q[1] * encuadre.h, q[2]];
     };
   }
 
@@ -226,6 +250,7 @@
   vista.addEventListener('wheel', e => { pos += Math.sign(e.deltaY + e.deltaX) * 1; auto = false; $('bAuto').classList.remove('on'); }, { passive: true });
   $('bIzq').onclick = () => { pos -= 3; }; $('bDer').onclick = () => { pos += 3; };
   $('bAuto').onclick = () => { auto = !auto; $('bAuto').classList.toggle('on', auto); };
+  $('bLimite').onclick = () => { verLimite = !verLimite; $('bLimite').classList.toggle('on', verLimite); dirty = true; };
   $('fCerrar').onclick = () => $('ficha').classList.remove('on');
   addEventListener('keydown', e => { if (e.key === 'ArrowLeft') pos -= 1; if (e.key === 'ArrowRight') pos += 1; if (e.key === 'Escape') $('ficha').classList.remove('on'); });
   addEventListener('resize', tam);
