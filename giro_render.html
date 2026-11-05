@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Kennedy 360</title>
-<meta name="description" content="Giro fotorrealista de Kennedy (Bogotá) alrededor del humedal El Burro">
+<meta name="description" content="Giro fotorrealista de Kennedy (Bogotá) alrededor de los humedales El Burro y La Vaca">
 <link rel="icon" href="data:,">
 <style>
   :root{--fondo:#060b12;--panel:rgba(8,16,26,.72);--borde:rgba(125,211,252,.22);--texto:#e2f3ff;--suave:#94a3b8;--acento:#7dd3fc;--verde:#34d399}
@@ -32,6 +32,14 @@
   /* interfaz */
   .chip{position:fixed;z-index:10;display:flex;align-items:center;gap:10px;padding:9px 13px;border-radius:12px;background:var(--panel);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--borde)}
   #titulo{top:14px;left:14px}
+  #sitios{position:fixed;z-index:10;top:14px;left:50%;transform:translateX(-50%);display:flex;padding:4px;gap:4px;border-radius:12px;background:var(--panel);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--borde)}
+  #sitios a{display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:9px;color:var(--texto);text-decoration:none;font:600 12px/1 inherit;letter-spacing:.06em;white-space:nowrap;transition:background .15s}
+  #sitios a:hover{background:rgba(125,211,252,.12)}
+  #sitios a i{width:7px;height:7px;border-radius:50%;background:var(--suave)}
+  #sitios a.on{color:#04121c;background:linear-gradient(100deg,#bae6fd,#7dd3fc)}
+  #sitios a.on i{background:#04121c}
+  #fIr{display:none;margin-top:14px;height:40px;width:100%;text-decoration:none}
+  #fIr.on{display:inline-flex}
   #titulo b{font-size:13px;letter-spacing:.04em}
   #titulo small{display:block;font-size:11px;color:var(--suave);margin-top:2px}
   #barraInf{position:fixed;z-index:10;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:8px;align-items:center}
@@ -56,7 +64,7 @@
   #ficha h2{font-size:18px;margin-bottom:6px}
   #ficha p{font-size:13px;color:var(--suave);line-height:1.5}
   #ficha .cerrar{position:absolute;right:10px;top:10px;width:30px;height:30px}
-  @media(max-width:700px){#titulo small{display:none}.btn{height:42px;padding:0 12px;font-size:11px;letter-spacing:.08em}.btn.redondo{width:42px}#ayuda{bottom:76px;font-size:11px}#grados{display:none}.btn .txt{display:none}.btn.principal .txt{display:inline}#atrib{bottom:auto;top:70px;left:16px;max-width:80vw}}
+  @media(max-width:700px){#sitios{top:68px}#sitios a{height:32px;padding:0 12px}#titulo small{display:none}.btn{height:42px;padding:0 12px;font-size:11px;letter-spacing:.08em}.btn.redondo{width:42px}#ayuda{bottom:76px;font-size:11px}#grados{display:none}.btn .txt{display:none}.btn.principal .txt{display:inline}#atrib{bottom:auto;top:70px;left:16px;max-width:80vw}}
 </style>
 </head>
 <body>
@@ -68,13 +76,14 @@
   <div class="tarjeta">
     <div class="marca"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><span>REN3D</span></div>
     <h1>Kennedy <span>360</span></h1>
-    <p>Vista fotorrealista alrededor del humedal El Burro · Bogotá</p>
+    <p id="cargaSub">Vista fotorrealista alrededor del humedal El Burro · Bogotá</p>
     <div class="barra"><i id="cargaBarra"></i></div>
     <div id="cargaTxt">Cargando vistas…</div>
   </div>
 </div>
 
-<div class="chip" id="titulo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--acento)"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><div><b>Kennedy 360</b><small>Humedal El Burro · Bogotá</small></div></div>
+<div class="chip" id="titulo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--acento)"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><div><b>Kennedy 360</b><small id="subtit">Humedal El Burro · Bogotá</small></div></div>
+<nav id="sitios" aria-label="Humedal"><a href="?h=burro" data-h="burro"><i></i>El Burro</a><a href="?h=vaca" data-h="vaca"><i></i>La Vaca</a></nav>
 <div class="chip" id="grados">0°</div>
 
 <div id="barraInf">
@@ -84,14 +93,22 @@
   <a class="btn principal" id="bMaqueta" href="./index.html?modo=kennedy"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg><span class="txt">Maqueta 3D</span></a>
 </div>
 <div id="ayuda"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg><span>Arrastra para girar alrededor del humedal</span></div>
-<div id="ficha"><button class="btn redondo cerrar" id="fCerrar" aria-label="Cerrar">✕</button><h2 id="fTit"></h2><p id="fTxt"></p></div>
+<div id="ficha"><button class="btn redondo cerrar" id="fCerrar" aria-label="Cerrar">✕</button><h2 id="fTit"></h2><p id="fTxt"></p><a class="btn principal" id="fIr" href="#"><span class="txt">Ver giro de este humedal</span></a></div>
 <div id="atrib">Imágenes 3D: Google · Render: Unreal Engine + Cesium</div>
 
 <script>
 (function () {
   'use strict';
   // ---- datos del giro (deben coincidir con Scripts/armar_escena.py del proyecto Kennedy360) ----
-  const G = { N: 72, RADIO: 650, ALTO: 260, OBJ_Z: 25, FOCAL: 20, SENSOR_W: 36, ASPECTO: 16 / 9, LAT: 4.640683, LON: -74.149778 };
+  const G = { N: 72, RADIO: 650, ALTO: 260, OBJ_Z: 25, FOCAL: 20, SENSOR_W: 36, ASPECTO: 16 / 9, LAT: 4.640683, LON: -74.149778, CX: 0, CY: 0 };
+  // un giro por humedal, misma cámara y misma escena de Unreal (La Vaca: Scripts/armar_vaca.py); CX, CY = centro de la órbita (m, X este, Y sur desde El Burro)
+  const MXg0 = 111320 * Math.cos(4.63 * Math.PI / 180);
+  const SITIOS = {
+    burro: { dir: 'giro', nombre: 'Humedal El Burro', CX: 0, CY: 0 },
+    vaca: { dir: 'giro_vaca', nombre: 'Humedal La Vaca', CX: (-74.161978 - G.LON) * MXg0, CY: -(4.628701 - G.LAT) * 110540 }
+  };
+  const HUM = SITIOS[new URLSearchParams(location.search).get('h')] ? new URLSearchParams(location.search).get('h') : 'burro';
+  const SITIO = SITIOS[HUM]; G.CX = SITIO.CX; G.CY = SITIO.CY;
   const MXg = 111320 * Math.cos(4.63 * Math.PI / 180), MYg = 110540;
   // puntos del territorio (lat, lng reales; alto de la etiqueta en m)
   const PUNTOS = [ // OpenStreetMap (data3d/kennedy.json)
@@ -110,7 +127,7 @@
   const cv = $('lienzo'), ctx = cv.getContext('2d');
   const chicas = new Array(G.N), grandes = new Array(G.N);
   let actual = 0, pos = 0, vel = 0, auto = false, arrastre = null, ultimoX = 0, ultimoT = 0, dirty = true;
-  const nombre = (pref, i) => 'giro/' + pref + '_' + String(i).padStart(3, '0') + '.webp';
+  const nombre = (pref, i) => SITIO.dir + '/' + pref + '_' + String(i).padStart(3, '0') + '.webp';
   const cargar = (url) => new Promise(r => { const im = new Image(); im.decoding = 'async'; im.onload = () => r(im); im.onerror = () => r(null); im.src = url; });
 
   // ---- carga: primero todas las vistas livianas (para girar ya), luego la de alta del ángulo actual ----
@@ -168,7 +185,12 @@
   const pins = PUNTOS.map(p => {
     const d = document.createElement('div'); d.className = 'pin';
     d.innerHTML = '<div class="et"><i></i>' + p.n + '</div><div class="palo"></div>';
-    d.querySelector('.et').onclick = () => { $('fTit').textContent = p.n; $('fTxt').textContent = p.d; $('ficha').classList.add('on'); };
+    d.querySelector('.et').onclick = () => {
+      $('fTit').textContent = p.n; $('fTxt').textContent = p.d;
+      const otro = Object.keys(SITIOS).find(k => SITIOS[k].nombre === p.n && k !== HUM); // humedal con su propio giro
+      $('fIr').classList.toggle('on', !!otro); if (otro) $('fIr').href = '?h=' + otro;
+      $('ficha').classList.add('on');
+    };
     $('marcas').appendChild(d);
     p.X = (p.lng - G.LON) * MXg; p.Y = -(p.lat - G.LAT) * MYg; // Unreal con Cesium: X = este, Y = sur, Z = arriba
     return d;
@@ -181,7 +203,7 @@
     const ux = -fz * fx, uy = -fz * fy, uz = 1 - fz * fz; const ul = Math.hypot(ux, uy, uz); // arriba de la cámara
     const th = (G.SENSOR_W / 2) / G.FOCAL, tv = th / G.ASPECTO;
     PUNTOS.forEach((p, i) => {
-      const dx = p.X - cx, dy = p.Y - cy, dz = p.z - cz;
+      const dx = p.X - G.CX - cx, dy = p.Y - G.CY - cy, dz = p.z - cz;
       const z = dx * fx + dy * fy + dz * fz;
       const x = (dx * rx + dy * ry) / z, y = (dx * ux + dy * uy + dz * uz) / ul / z;
       const u = 0.5 + x / (2 * th), v = 0.5 - y / (2 * tv);
@@ -204,7 +226,7 @@
         let rx = -fy, ry = fx; const rl = Math.hypot(rx, ry); rx /= rl; ry /= rl;
         const ux = -fz * fx, uy = -fz * fy, uz = 1 - fz * fz, ul = Math.hypot(ux, uy, uz), th = (G.SENSOR_W / 2) / G.FOCAL;
         k = { cx, cy, cz, fx, fy, fz, rx, ry, ux: ux / ul, uy: uy / ul, uz: uz / ul, th, tv: th / G.ASPECTO }; }
-      const dx = X - k.cx, dy = Y - k.cy, dz = Z - k.cz, z = dx * k.fx + dy * k.fy + dz * k.fz;
+      const dx = X - G.CX - k.cx, dy = Y - G.CY - k.cy, dz = Z - k.cz, z = dx * k.fx + dy * k.fy + dz * k.fz;
       if (z < 5) return null;
       const u = 0.5 + (dx * k.rx + dy * k.ry) / z / (2 * k.th), v = 0.5 - (dx * k.ux + dy * k.uy + dz * k.uz) / z / (2 * k.tv);
       return [encuadre.ox + u * encuadre.w, encuadre.oy + v * encuadre.h, z];
@@ -226,6 +248,10 @@
   vista.addEventListener('wheel', e => { pos += Math.sign(e.deltaY + e.deltaX) * 1; auto = false; $('bAuto').classList.remove('on'); }, { passive: true });
   $('bIzq').onclick = () => { pos -= 3; }; $('bDer').onclick = () => { pos += 3; };
   $('bAuto').onclick = () => { auto = !auto; $('bAuto').classList.toggle('on', auto); };
+  document.querySelectorAll('#sitios a').forEach(a => a.classList.toggle('on', a.dataset.h === HUM));
+  $('subtit').textContent = SITIO.nombre + ' · Bogotá';
+  $('cargaSub').textContent = 'Vista fotorrealista alrededor del ' + SITIO.nombre.replace('Humedal', 'humedal') + ' · Bogotá';
+  document.querySelector('#ayuda span').textContent = 'Arrastra para girar alrededor del humedal';
   $('fCerrar').onclick = () => $('ficha').classList.remove('on');
   addEventListener('keydown', e => { if (e.key === 'ArrowLeft') pos -= 1; if (e.key === 'ArrowRight') pos += 1; if (e.key === 'Escape') $('ficha').classList.remove('on'); });
   addEventListener('resize', tam);
