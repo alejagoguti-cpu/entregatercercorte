@@ -1240,7 +1240,11 @@ async function initTodoReal() {
     // edificios del modelo propio: volumen limpio con huellas y alturas reales, sobre el suelo fotográfico de Google
     // edificios en binario por celdas de 1 km (data3d/edif): primero las cercanas a la cámara, el resto en segundo plano
     const EI = await pEdifIdx;
-    const cargarEdif = async (f) => decodificarEdificios(EI, await (await fetch('data3d/edif/' + f)).arrayBuffer()).filter(b => enZona(b.pts[0][0], b.pts[0][1])); // vista realista: solo la zona del proyecto
+    // antigua fábrica de Bavaria: modelo propio (data3d/bavaria.js); sus cajas genéricas se quitan
+    const pBav = GOOGLE ? Promise.resolve(null) : fetch('data3d/bavaria.json').then(r => r.json()).catch(() => null);
+    const enPoli = (W, x, y) => { let c = false; for (let i = 0, j = W.length - 1; i < W.length; j = i++) { const a = W[i], b = W[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+    const deBavaria = (BV, b) => { if (!BV) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n; y /= n; return BV.edif.some(e => enPoli(e.p, x, y)); };
+    const cargarEdif = async (f) => { const BV = await pBav; return decodificarEdificios(EI, await (await fetch('data3d/edif/' + f)).arrayBuffer()).filter(b => enZona(b.pts[0][0], b.pts[0][1]) && !deBavaria(BV, b)); }; // vista realista: solo la zona del proyecto
     const agregarHuellas = () => {}; // la máscara de huellas ya viene precalculada (data3d/edif/mascara*.png)
     if (!GOOGLE && !(LIVIANO && !MEDIO)) pMalla.then(() => { if (T3.maskU) cargarMascara(T3, LIVIANO ? 'mascara_humedal.png' : 'mascara.png'); });
     let B = [];
@@ -1262,6 +1266,8 @@ async function initTodoReal() {
       })();
     }
     marcarPaso('edif');
+    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=1').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
+      .catch(e => console.warn('fábrica Bavaria:', e));
     const T = await pT;
     const [W, P, N] = await pWPN;
     T3.net = N; // red de vías: el modo pájaro la usa para ubicar la avenida del humedal
