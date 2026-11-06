@@ -135,22 +135,6 @@ export function construirBavaria({ THREE, T3, lw, D, liviano }) {
     grupo.add(tg);
   }
   T3.scene.add(grupo);
-  // ---- arbolado del predio (data3d/bavaria_arboles.json: masas oscuras de follaje de la imagen satelital) ----
-  fetch('data3d/bavaria_arboles.json?v=1').then(r => r.json()).then(({ arboles }) => {
-    const libre = (D.libres || []).map(z => z.map(p => lw(p[0], p[1]))); // huerto, compostaje y patio de carga: sin árboles
-    const L = arboles.filter((t, i) => (!liviano || i % 3 === 0) && !libre.some(z => dentro(z, ...lw(t[0], t[1]))));
-    const tronco = new THREE.CylinderGeometry(0.22, 0.34, 1, 6); tronco.translate(0, 0.5, 0);
-    const copa = new THREE.IcosahedronGeometry(1, 1); copa.scale(1, 1.55, 1); // copa alargada (eucaliptos y urapanes)
-    const mT = new THREE.MeshStandardMaterial({ color: 0x5b4a3a, roughness: 1 }), mC = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true });
-    const iT = new THREE.InstancedMesh(tronco, mT, L.length), iC = new THREE.InstancedMesh(copa, mC, L.length), d = new THREE.Object3D(), c = new THREE.Color();
-    L.forEach((t, k) => {
-      const [x, z] = lw(t[0], t[1]), h = t[2], r = t[3];
-      d.position.set(x, 0, z); d.rotation.set(0, rnd() * 6.28, 0); d.scale.set(1, h * 0.45, 1); d.updateMatrix(); iT.setMatrixAt(k, d.matrix);
-      d.position.set(x, h * 0.62, z); d.scale.set(r, h * 0.27, r); d.updateMatrix(); iC.setMatrixAt(k, d.matrix);
-      iC.setColorAt(k, c.setHSL(0.27 + rnd() * 0.07, 0.38 + rnd() * 0.2, 0.13 + rnd() * 0.09));
-    });
-    for (const m of [iT, iC]) { m.castShadow = !liviano; m.receiveShadow = !liviano; grupo.add(m); }
-    grupo.userData.arboles = L.length;
-  }).catch(e => console.warn('árboles de Bavaria:', e));
+  // el arbolado del predio (data3d/bavaria_arboles.json) lo dibuja real3d.js con los mismos modelos reales del territorio (ver index.html)
   return grupo;
 }

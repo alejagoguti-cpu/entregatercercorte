@@ -1276,7 +1276,7 @@ async function initTodoReal() {
       })();
     }
     marcarPaso('edif');
-    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=2').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
+    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=3').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
       .catch(e => console.warn('fábrica Bavaria:', e));
     if (!GOOGLE && !(LIVIANO && !MEDIO)) pCora.then(CO => CO && import('./data3d/corabastos.js?v=1').then(m => { T3.corabastos = m.construirCorabastos({ THREE, T3, lw, D: CO, liviano: LIVIANO }); }))
       .catch(e => console.warn('Corabastos:', e));
@@ -1337,7 +1337,10 @@ async function initTodoReal() {
       // copas simplificadas solo con ?copas=1: los modelos reales de Poly Haven (hojas y ramas) se ven mucho más reales
       if (REALISTA && new URLSearchParams(location.search).get('copas') === '1') { try { T3.trees = buildCopas(THREE, T); T3.counts.t = T.t.length; } catch (e) { console.warn('copas:', e); T3.trees = null; } marcarPaso('arboles'); T3.arbolesOk(); return; }
       try {
-        T3.trees = await T3.R.buildTrees(T3, ZON ? { ...T, t: T.t.filter(t => enZona(t[0], t[1], 100)) } : T, W, lw, T3.env);
+        // árboles de la antigua fábrica de Bavaria (masas de follaje de la imagen satelital): mismos modelos reales que el resto del territorio
+        let TT = T;
+        try { const [BA, BV] = await Promise.all([fetch('data3d/bavaria_arboles.json?v=1').then(r => r.json()), pBav]); if (BA && BA.arboles) { const lib = (BV && BV.libres) || []; TT = { ...T, t: T.t.concat(BA.arboles.filter(a => !lib.some(z => enPoli(z, a[0], a[1]))).map(a => [a[0], a[1], a[2], 0])) }; } } catch (e) { console.warn('árboles de Bavaria:', e); }
+        T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
         if (KEN && T3.trees && T3.trees.opacidad) T3.trees.opacidad(0.62); // vista de simulación: copas semitransparentes
