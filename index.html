@@ -3058,9 +3058,11 @@ $('b-hd').onclick = async () => {
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
-  Promise.all([import('./data3d/giro_sim.js?v=12'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'] }))
+  let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
+  Promise.all([import('./data3d/giro_sim.js?v=13'), import('./data3d/estrategias.js?v=1'), listoK()])
+    .then(async ([m, me]) => { try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0 }); } catch (e) { console.warn('estrategias:', e); } return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: EST ? EST.lista : null, verEstrategia: (id, on) => EST && EST.ver(id, on) }); })
     .then(() => import('./data3d/cielo.js?v=3')).then(m => { T3.cielo = m.iniciarCielo({ THREE: T3.THREE, T3, luzMalla }); }) // cielo y luz de 24 horas con el reloj de la simulación
-    .then(() => import('./data3d/biotica.js?v=6')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL }))
+    .then(() => import('./data3d/biotica.js?v=7')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL, huertas: EST ? EST.sitios(['E1', 'E2']) : null }))
     .catch(e => console.warn('simulación Kennedy:', e));
 } else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({

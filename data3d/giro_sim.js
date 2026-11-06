@@ -192,6 +192,9 @@ export async function iniciarSimulacion(cfg = {}) {
   // la red biótica (data3d/biotica.js) trae su propia fauna con forma 3D y movimiento por especie: aquí no se duplica
   const SIN = new Set(cfg.sinFauna || []);
   if (SIN.size) { for (let i = A.length - 1; i >= 0; i--) if (SIN.has(A[i].tipo)) A.splice(i, 1); for (const k of SIN) delete CNT[k]; }
+  // ESTRATEGIAS (cfg.estrategias, de data3d/estrategias.json) reemplazan las convenciones P1-P4: se quitan sus actores, zonas, etiquetas e indicadores
+  const SINP = !!cfg.estrategias, EST = cfg.estrategias || [];
+  if (SINP) { for (let i = A.length - 1; i >= 0; i--) if (ACT[A[i].tipo] && ACT[A[i].tipo].p) A.splice(i, 1); for (const k of Object.keys(ACT)) if (ACT[k].p) delete CNT[k]; }
 
   /* ---------- interfaz ---------- */
   const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: true };
@@ -202,12 +205,14 @@ export async function iniciarSimulacion(cfg = {}) {
     <div class="gs-sub">SINTAXIS ESPACIAL <span>DepthmapX</span></div>
     <div class="gs-fila gs-fila3" id="gs-capa"><button data-c="i" class="on">Integración</button><button data-c="c">Elección</button><button data-c="">Apagar</button></div>
     <div class="gs-ley"><span>baja</span><i></i><span>alta</span></div>
-    <div class="gs-fila" style="grid-template-columns:1fr 1fr"><button id="gs-ag" class="on">Agentes</button><button id="gs-cv-b" class="on">Convenciones</button></div>
-    <div class="gs-sub">CONVENCIONES</div>
-    ${Object.entries(CONV).map(([k, c]) => `<div class="gs-conv"><b style="background:${c.c}">${k}</b><div>${c.t}<small>${c.a} · ${c.h}</small></div></div>`).join('')}`;
+    <div class="gs-fila" style="grid-template-columns:1fr 1fr"><button id="gs-ag" class="on">Agentes</button><button id="gs-cv-b" class="on">${SINP ? 'Estrategias' : 'Convenciones'}</button></div>
+    ${SINP ? `<div class="gs-sub">ESTRATEGIAS <span>toca para ver u ocultar</span></div>
+    ${EST.map(e => `<button class="gs-conv gs-est on" data-e="${e.id}" style="width:100%;height:auto;padding:4px 6px;background:none;text-align:left;font:inherit;color:inherit;letter-spacing:0;cursor:pointer"><b style="background:${e.c}">${e.id}</b><div>${e.n}<small>${e.n_lotes.toLocaleString('es-CO')} lotes · ${(e.area / 1e4).toLocaleString('es-CO', { maximumFractionDigits: 1 })} ha</small></div></button>`).join('')}`
+    : `<div class="gs-sub">CONVENCIONES</div>
+    ${Object.entries(CONV).map(([k, c]) => `<div class="gs-conv"><b style="background:${c.c}">${k}</b><div>${c.t}<small>${c.a} · ${c.h}</small></div></div>`).join('')}`}`;
   const der = document.createElement('div'); der.className = 'gs-pan'; der.id = 'gs-der';
   const fila = (k) => `<tr><td><i style="background:${ACT[k].c}"></i></td><td>${ACT[k].n}${ACT[k].p ? `<span class="p">${ACT[k].p}</span>` : ''}</td><td>${(CNT[k] || 0).toLocaleString('es-CO')}</td><td id="gs-a-${k}">–</td></tr>`;
-  const H_ = Object.keys(ACT).filter(k => ACT[k].g === 'h'), NH = Object.keys(ACT).filter(k => ACT[k].g === 'n' && !SIN.has(k));
+  const H_ = Object.keys(ACT).filter(k => ACT[k].g === 'h' && !(SINP && ACT[k].p)), NH = Object.keys(ACT).filter(k => ACT[k].g === 'n' && !SIN.has(k) && !(SINP && ACT[k].p));
   const tot = (L) => L.reduce((s, k) => s + (CNT[k] || 0), 0).toLocaleString('es-CO');
   der.innerHTML = `<h3>ACTORES <em>total · activos</em></h3>
     <div class="gs-sub">HUMANOS <span>${tot(H_)}</span></div><table class="gs-t">${H_.map(fila).join('')}</table>
@@ -221,6 +226,7 @@ export async function iniciarSimulacion(cfg = {}) {
     <div class="gs-nota">Calles: análisis angular de segmentos (método DepthmapX) sobre OpenStreetMap. Cantidades y horarios son supuestos de escala [SUP] para discutir con el grupo.</div>`;
   const tog = document.createElement('button'); tog.id = 'gs-tog'; tog.textContent = 'DATOS';
   document.body.append(izq, der, tog);
+  if (SINP) { const ind = der.querySelector('.gs-ind'); if (ind) { ind.previousElementSibling.remove(); ind.remove(); } } // sin indicadores de las P
   tog.onclick = () => { const on = !document.body.classList.contains('gs-abierto'); document.body.classList.toggle('gs-abierto', on); tog.classList.toggle('on', on); if (!on) return; const vis = izq.classList.contains('gs-act'); izq.classList.toggle('gs-act', !vis); der.classList.toggle('gs-act', vis); tog.textContent = vis ? 'ACTORES' : 'SIMULACIÓN'; };
   if (matchMedia('(max-width:760px)').matches) { izq.classList.remove('gs-act'); der.classList.add('gs-act'); }
   if (M3) T3.reloj = st0; // el cielo de 24 horas (data3d/cielo.js) sigue esta hora
@@ -250,7 +256,10 @@ export async function iniciarSimulacion(cfg = {}) {
   izq.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { st0.vel = +b.dataset.v; izq.querySelectorAll('[data-v]').forEach(x => x.classList.toggle('on', x === b)); });
   izq.querySelectorAll('#gs-capa button').forEach(b => b.onclick = () => { st0.capa = b.dataset.c; izq.querySelectorAll('#gs-capa button').forEach(x => x.classList.toggle('on', x === b)); vCache = -1; if (M3) capa3D(); });
   $('gs-ag').onclick = (e) => { st0.agentes = !st0.agentes; e.currentTarget.classList.toggle('on', st0.agentes); if (M3) for (const m of Object.values(MALLAS)) m.visible = st0.agentes; };
-  $('gs-cv-b').onclick = (e) => { st0.conv = !st0.conv; e.currentTarget.classList.toggle('on', st0.conv); vCache = -1; if (M3) ZONAS3D.visible = st0.conv; };
+  $('gs-cv-b').onclick = (e) => { st0.conv = !st0.conv; e.currentTarget.classList.toggle('on', st0.conv); vCache = -1;
+    if (SINP) { izq.querySelectorAll('.gs-est').forEach(b => { b.classList.toggle('on', st0.conv); b.style.opacity = st0.conv ? 1 : 0.4; }); if (cfg.verEstrategia) for (const x of EST) cfg.verEstrategia(x.id, st0.conv); return; }
+    if (M3) ZONAS3D.visible = st0.conv; };
+  izq.querySelectorAll('.gs-est').forEach(b => b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.style.opacity = on ? 1 : 0.4; if (cfg.verEstrategia) cfg.verEstrategia(b.dataset.e, on); });
 
   /* ---------- capa fija por ángulo: calles con sintaxis espacial y zonas de las convenciones ---------- */
   let vCache = -1, W = 0, Hh = 0, dpr = 1;
@@ -278,7 +287,7 @@ export async function iniciarSimulacion(cfg = {}) {
       }
       g.globalAlpha = 1;
     }
-    if (st0.conv) {
+    if (st0.conv && !SINP) {
       const poli = (pts, fill, stroke, w) => { const p = new Path2D(); let ok = 0; pts.forEach((q, k) => { const r = P(q[0], q[1], Z0); if (!r) return; ok++; k ? p.lineTo(r[0], r[1]) : p.moveTo(r[0], r[1]); }); if (ok < 3) return; p.closePath(); if (fill) { g.fillStyle = fill; g.fill(p); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = w; g.stroke(p); } };
       for (const h of HUM) { g.setLineDash([7, 5]); poli(h.borde, null, CONV.P1.c, 2.4); g.setLineDash([]); poli(h.poly, 'rgba(52,211,153,.10)', null); }
       const circ = (c, r, col) => { const pts = []; for (let k = 0; k < 28; k++) pts.push([c[0] + Math.cos(k / 28 * 6.283) * r, c[1] + Math.sin(k / 28 * 6.283) * r]); poli(pts, col + '33', col, 2); };
@@ -289,7 +298,7 @@ export async function iniciarSimulacion(cfg = {}) {
   const LBL = []; // rectángulos de las etiquetas P1-P4 (para el clic)
   function etiquetas() { // tarjetas P1-P4 encima de los agentes
     const P = proy, L = []; LBL.length = 0;
-    if (st0.conv) {
+    if (st0.conv && !SINP) {
       for (const h of HUM) { const q = h.borde[Math.floor(h.borde.length * 0.15)]; L.push(['P1', q, h.n.replace('Humedal ', '')]); }
       L.push(['P2', BIO, 'junto a Corabastos']); COC.forEach((c, i) => L.push(['P3', c.p, 'Cocina ' + (i + 1)])); HUE.forEach((h, i) => L.push(['P4', h.c, 'Lote ' + (i + 1)]));
     }
@@ -450,7 +459,7 @@ export async function iniciarSimulacion(cfg = {}) {
     CINTAS.renderOrder = 2; CINTAS.frustumCulled = false; T3.scene.add(CINTAS);
     capa3D = () => { if (!st0.capa) { CINTAS.visible = false; return; } CINTAS.visible = true; geo.attributes.color.array.set(COLS[st0.capa]); geo.attributes.color.needsUpdate = true; };
     // convenciones: borde de cuidado de los humedales, biofábrica, cocinas y huertas pintados en el suelo
-    ZONAS3D = new THREE.Group(); T3.scene.add(ZONAS3D);
+    ZONAS3D = new THREE.Group(); T3.scene.add(ZONAS3D); ZONAS3D.visible = !SINP; // con estrategias no se pintan las zonas de las P
     const matZ = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 });
     const cinta = (pts, w, c, o, cerrada) => { const P = [], I = []; const n = pts.length; for (let k = 0; k < n; k++) { const a = pts[(k - 1 + n) % n], b = pts[(k + 1) % n]; let dx = b[0] - a[0], dy = b[1] - a[1]; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l; const x = pts[k][0] + OX, z = pts[k][1] + OZ; P.push(x - dy * w, Y0 + 0.1, z + dx * w, x + dy * w, Y0 + 0.1, z - dx * w); if (k < n - 1 || cerrada) { const v = k * 2, u = ((k + 1) % n) * 2; I.push(v, v + 1, u, v + 1, u + 1, u); } } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); const m = new THREE.Mesh(g, matZ(c, o)); m.renderOrder = 3; ZONAS3D.add(m); };
     const relleno = (pts, c, o) => { const sh = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0] + OX, -(p[1] + OZ)))); const g = new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI / 2); g.translate(0, Y0 + 0.08, 0); const m = new THREE.Mesh(g, matZ(c, o)); m.renderOrder = 3; ZONAS3D.add(m); };
@@ -660,9 +669,10 @@ export async function iniciarSimulacion(cfg = {}) {
       $('gs-jor').textContent = T < H(4, 45) ? 'Noche' : T < H(5, 40) ? 'Madrugada · alba' : T < H(7) ? 'Amanece · antes de las jornadas' : T < H(11, 30) ? 'Jornada diurna' : T < H(14) ? 'Almuerzo' : T < H(17, 30) ? 'Jornada después del almuerzo' : T < H(18, 30) ? 'Atardecer' : T < H(19, 15) ? 'Anochece' : 'Noche';
       for (const k of Object.keys(ACT)) { const e = $('gs-a-' + k); if (e) e.textContent = (k === 'hongo' ? (T > H(8) ? 600 : 0) : k === 'lombriz' ? Math.round(HUE.reduce((s, h) => s + h.lomb, 0)) : (act[k] || 0)).toLocaleString('es-CO'); }
       const f = (v, u, d = 0) => v.toLocaleString('es-CO', { maximumFractionDigits: d }) + (u ? ' ' + u : '');
+      if (!SINP) { // indicadores de las P (con estrategias no existen)
       $('gs-i-rondas').textContent = f(IND.rondas, 'km', 1); $('gs-i-residuos').textContent = f(IND.residuos, 'kg', 1); $('gs-i-registros').textContent = f(IND.registros);
       $('gs-i-sustrato').textContent = f(IND.sustrato, 'kg'); $('gs-i-hongos').textContent = f(IND.hongos, 'kg', 1); $('gs-i-degust').textContent = f(IND.degust);
-      $('gs-i-visitas').textContent = f(IND.visitas); $('gs-i-cosecha').textContent = f(IND.cosecha, 'kg', 1); $('gs-i-humus').textContent = f(IND.humus, 'kg', 1);
+      $('gs-i-visitas').textContent = f(IND.visitas); $('gs-i-cosecha').textContent = f(IND.cosecha, 'kg', 1); $('gs-i-humus').textContent = f(IND.humus, 'kg', 1); }
     }
     requestAnimationFrame(cuadro);
   }

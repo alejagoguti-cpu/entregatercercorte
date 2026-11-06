@@ -69,7 +69,7 @@ const POR_PARQUE = { abeja: 1.2, lombriz: 0.6, copeton: 3, mirla: 1.6, torcaza: 
 // conexiones: con quién se une cada animal (individuo más cercano de cada especie relacionada en la red, y árbol relacionado)
 const R_RED = 220, R_RAPAZ = 420, R_ARBOL = 90, CERCA = 18;
 
-export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = false }) {
+export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = false, huertas = null }) {
   const [{ LineSegments2 }, { LineSegmentsGeometry }, { LineMaterial }] = await Promise.all([import('three/addons/lines/LineSegments2.js'), import('three/addons/lines/LineSegmentsGeometry.js'), import('three/addons/lines/LineMaterial.js')]);
   const [D, B, TR, PQ] = await Promise.all(['data3d/giro_sim.json', 'data3d/biotica.json?v=2', 'data3d/trees.json', 'data3d/parques.json'].map(u => fetch(u).then(r => r.json())));
   const rnd = Math.random, gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283 * v); };
@@ -110,9 +110,12 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   }).filter(p => p.area > 2500 && Math.hypot(p.cx - OX, p.cz - OZ) < 2400).sort((p, q) => q.area - p.area).slice(0, movil ? 30 : 55);
   for (const p of PAR) p.k = Math.max(0.35, Math.min(2.2, Math.sqrt(p.area) / 110));
   // huertas en lotes baldíos (P4 de la simulación): colmenas, lombrices y las aves que atrae la huerta
-  const HUE = (D.huertas || []).map(h => {
-    const poly = h.poly.map(p => [p[0] + OX, p[1] + OZ]); let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of poly) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
-    return { n: h.n, tipo: 'huerta', poly, borde: poly, x0, x1, z0, z1, cx: h.c[0] + OX, cz: h.c[1] + OZ, ag: {}, k: 1 };
+  // sitios de huerta: los de las estrategias E1 y E2 (cfg.huertas, ya en el mundo) o, sin estrategias, las huertas de giro_sim.json
+  const fuenteH = huertas ? huertas.map(h => ({ n: h.id + ' · ' + h.n, poly: h.poly })) : (D.huertas || []).map(h => ({ n: h.n, poly: h.poly.map(p => [p[0] + OX, p[1] + OZ]) }));
+  const HUE = fuenteH.filter(h => h.poly.length >= 3).map(h => {
+    const poly = h.poly; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, cx = 0, cz = 0; for (const p of poly) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); cx += p[0]; cz += p[1]; }
+    const borde = poly.concat([poly[0]]);
+    return { n: h.n, tipo: 'huerta', poly, borde, x0, x1, z0, z1, cx: cx / poly.length, cz: cz / poly.length, ag: {}, k: 1 };
   });
   const HAB = HUM.concat(PAR, HUE);
   // árboles reales (censo SIGAU) en toda la zona, en un índice espacial único
