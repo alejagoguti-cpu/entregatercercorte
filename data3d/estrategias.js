@@ -5,7 +5,7 @@
    Cada estrategia se pinta con su color: E3 y E5 sobre el TECHO de cada edificio del lote (a su altura), los demás lotes a ras
    del suelo; con borde y, en los sitios de E1, E2 y E4, una etiqueta. Cada una se prende y apaga desde el panel. */
 export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0 }) {
-  const D = await (await fetch('data3d/estrategias.json?v=1')).json();
+  const D = await (await fetch('data3d/estrategias.json?v=2')).json();
   const esc = D.escala || 0.5, grupo = new THREE.Group(); grupo.name = 'estrategias'; T3.scene.add(grupo);
   const CAPA = {};
   for (const e of D.estrategias) {

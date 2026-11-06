@@ -16,7 +16,7 @@ MX = 111320 * math.cos(math.radians(4.63)); MY = 110540.0
 def xy(lo, la): return ((lo + 74.17) * MX + 5193.24, (la - 4.63) * MY + 2090.06)  # GEO de index.html
 
 EST = {
-    'P1': ('E1', 'Huertas en humedal y ronda de río', '#34d399'),
+    # P1 (E1 huertas en humedal y ronda de río) se quitó de la propuesta
     'P2': ('E2', 'Huertas en lotes baldíos', '#a3e635'),
     'P3': ('E3', 'Huertas en cubiertas de vivienda en altura', '#f59e0b'),
     'P4': ('E4', 'Distrito biotecnológico', '#a78bfa'),
