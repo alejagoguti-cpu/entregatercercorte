@@ -926,7 +926,7 @@ async function crearMallaGoogle(T) {
   // máscara de huellas del modelo: donde hay un edificio propio se recorta lo que Google levanta (su versión "derretida") y queda solo su foto del suelo
   T.maskU = { uGrade: { value: REALISTA && !GOOGLE ? new THREE.Vector4(1.2, 0.9, 1.22, 1) : new THREE.Vector4(1, 1, 1, 0) }, uTint: { value: REALISTA && !GOOGLE ? new THREE.Vector3(1.04, 1.0, 0.93) : new THREE.Vector3(1, 1, 1) }, // saturación, contraste, brillo, quitar bruma · tinte
     uMask: { value: null }, uOn: { value: 0 }, uLC: { value: new THREE.Vector2(LC.x, LC.y) }, uDim: { value: new THREE.Vector2(1 / MASK.XM, 1 / MASK.YM) }, uCut: { value: 2.5 },
-    uZona: { value: new THREE.Vector3(ZONA.x - LC.x, LC.y - ZONA.y, ZON ? ZONA.r : 1e9) } }; // fuera de la zona: malla de Google tal cual
+    uZona: { value: new THREE.Vector3(ZONA.x - LC.x, LC.y - ZONA.y, ZON ? (KEN ? Math.max(ZONA.r, 2400) : ZONA.r) : 1e9) } }; // Kennedy: el recorte llega también a Corabastos y Bavaria (en celular el radio de carga es menor) // fuera de la zona: malla de Google tal cual
   const recorte = (m) => {
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, T.maskU);
@@ -946,9 +946,10 @@ async function crearMallaGoogle(T) {
         }
         #include <opaque_fragment>`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-          if (uOn > 0.5 && vWPm.y > uCut && distance(vWPm.xz, uZona.xy) < uZona.z) { // recorte de edificios de Google solo donde están los propios
+          if (uOn > 0.5 && vWPm.y > 0.9 && distance(vWPm.xz, uZona.xy) < uZona.z) { // recorte de edificios de Google solo donde están los propios
             vec2 mu = vec2((vWPm.x + uLC.x) * uDim.x, 1.0 - (uLC.y - vWPm.z) * uDim.y);
-            if (mu.x > 0.0 && mu.x < 1.0 && mu.y > 0.0 && mu.y < 1.0 && texture2D(uMask, mu).r < 0.5) discard;
+            float mk = texture2D(uMask, mu).r; // 1 libre · 0,39 edificio genérico (corte en uCut) · 0 modelo detallado: Corabastos, Bavaria (corte a 0,9 m)
+            if (mu.x > 0.0 && mu.x < 1.0 && mu.y > 0.0 && mu.y < 1.0 && mk < 0.5 && (vWPm.y > uCut || mk < 0.2)) discard;
           }`);
     };
     m.customProgramCacheKey = () => 'recorteHuellasG';
