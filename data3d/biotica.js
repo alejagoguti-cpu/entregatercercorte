@@ -423,7 +423,7 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   const disco = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.beginPath(); g.arc(32, 32, 26, 0, 6.283); g.fill(); g.lineWidth = 6; g.strokeStyle = 'rgba(8,16,26,.85)'; g.stroke(); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
   const pp = new Float32Array(MAXL * 3), pc = new Float32Array(MAXL * 4);
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pp, 3).setUsage(THREE.DynamicDrawUsage)); pg.setAttribute('color', new THREE.BufferAttribute(pc, 4).setUsage(THREE.DynamicDrawUsage));
-  const pulsos = new THREE.Points(pg, new THREE.PointsMaterial({ size: movil ? 6 : 8, map: disco, alphaTest: 0.3, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
+  const pulsos = new THREE.Points(pg, new THREE.PointsMaterial({ size: movil ? 3 : 4, map: disco, alphaTest: 0.3, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
   pulsos.frustumCulled = false; pulsos.renderOrder = 9; grupo.add(pulsos);
   // marca: un punto redondo con el color de la convención del grupo encima de cada animal (se ve desde la vista general)
   const mp = new Float32Array(AG.length * 3), mc = new Float32Array(AG.length * 4);
@@ -712,7 +712,7 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
         const a = P[i], on = foco === i, fr = 0.35 + 0.65 * (1 - a[2]) / 2;
         g.strokeStyle = TIPOS[v.t].c; g.globalAlpha = on ? 1 : (foco >= 0 ? 0.25 : 0.75) * fr; g.lineWidth = on ? 2.4 : 1.4;
         g.beginPath(); g.moveTo(C[0], C[1]); g.lineTo(a[0], a[1]); g.stroke();
-        const u = ((ahora / 1000) * 0.45 + i * 0.137) % 1, s = v.rol === 'a' ? u : 1 - u; g.fillStyle = TIPOS[v.t].c; g.beginPath(); g.arc(C[0] + (a[0] - C[0]) * s, C[1] + (a[1] - C[1]) * s, on ? 3.2 : 2.2, 0, 6.2832); g.fill();
+        const u = ((ahora / 1000) * 0.45 + i * 0.137) % 1, s = v.rol === 'a' ? u : 1 - u; g.fillStyle = TIPOS[v.t].c; g.beginPath(); g.arc(C[0] + (a[0] - C[0]) * s, C[1] + (a[1] - C[1]) * s, on ? 2 : 1.4, 0, 6.2832); g.fill();
       });
       g.globalAlpha = 1;
       // esferas: de atrás hacia adelante; el centro va donde le toca por profundidad (z = 0)
