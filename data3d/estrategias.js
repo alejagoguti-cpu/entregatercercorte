@@ -25,7 +25,7 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0 }) {
     const gl = new THREE.BufferGeometry(); gl.setAttribute('position', new THREE.Float32BufferAttribute(L, 3));
     const borde = new THREE.LineSegments(gl, new THREE.LineBasicMaterial({ color: col.clone().multiplyScalar(techo ? 0.75 : 1), transparent: true, opacity: 0.95, depthWrite: false }));
     borde.renderOrder = 5; borde.frustumCulled = false;
-    const gr = new THREE.Group(); gr.add(relleno, borde); grupo.add(gr);
+    const gr = new THREE.Group(); gr.add(relleno, borde); gr.visible = false; grupo.add(gr); // al iniciar, todas apagadas
     CAPA[e.id] = { gr, e };
   }
 

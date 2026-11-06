@@ -197,7 +197,7 @@ export async function iniciarSimulacion(cfg = {}) {
   if (SINP) { for (let i = A.length - 1; i >= 0; i--) if (ACT[A[i].tipo] && ACT[A[i].tipo].p) A.splice(i, 1); for (const k of Object.keys(ACT)) if (ACT[k].p) delete CNT[k]; }
 
   /* ---------- interfaz ---------- */
-  const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: true };
+  const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: !SINP }; // con estrategias, arrancan apagadas
   const izq = document.createElement('div'); izq.className = 'gs-pan gs-act'; izq.id = 'gs-izq';
   izq.innerHTML = `<h3>SIMULACIÓN <em id="gs-dia">DÍA 1</em></h3>
     <div class="gs-reloj"><svg id="gs-dial" viewBox="0 0 120 120" role="slider" tabindex="0" aria-label="Hora del día (24 horas): arrastra alrededor" aria-valuemin="0" aria-valuemax="1439"></svg><div><b id="gs-hora">06:30</b><small id="gs-jor">Antes de la jornada</small><em>Arrastra la bola alrededor: después de las 23:59 sigue la 00:00</em></div></div>
@@ -205,9 +205,9 @@ export async function iniciarSimulacion(cfg = {}) {
     <div class="gs-sub">SINTAXIS ESPACIAL <span>DepthmapX</span></div>
     <div class="gs-fila gs-fila3" id="gs-capa"><button data-c="i" class="on">Integración</button><button data-c="c">Elección</button><button data-c="">Apagar</button></div>
     <div class="gs-ley"><span>baja</span><i></i><span>alta</span></div>
-    <div class="gs-fila" style="grid-template-columns:1fr 1fr"><button id="gs-ag" class="on">Agentes</button><button id="gs-cv-b" class="on">${SINP ? 'Estrategias' : 'Convenciones'}</button></div>
+    <div class="gs-fila" style="grid-template-columns:1fr 1fr"><button id="gs-ag" class="on">Agentes</button><button id="gs-cv-b" class="${SINP ? '' : 'on'}">${SINP ? 'Estrategias' : 'Convenciones'}</button></div>
     ${SINP ? `<div class="gs-sub">ESTRATEGIAS <span>toca para ver u ocultar</span></div>
-    ${EST.map(e => `<button class="gs-conv gs-est on" data-e="${e.id}" style="width:100%;height:auto;padding:4px 6px;background:none;text-align:left;font:inherit;color:inherit;letter-spacing:0;cursor:pointer"><b style="background:${e.c}">${e.id}</b><div>${e.n}<small>${e.n_lotes.toLocaleString('es-CO')} lotes · ${(e.area / 1e4).toLocaleString('es-CO', { maximumFractionDigits: 1 })} ha</small></div></button>`).join('')}`
+    ${EST.map(e => `<button class="gs-conv gs-est" data-e="${e.id}" style="opacity:.4;width:100%;height:auto;padding:4px 6px;background:none;text-align:left;font:inherit;color:inherit;letter-spacing:0;cursor:pointer"><b style="background:${e.c}">${e.id}</b><div>${e.n}<small>${e.n_lotes.toLocaleString('es-CO')} lotes · ${(e.area / 1e4).toLocaleString('es-CO', { maximumFractionDigits: 1 })} ha</small></div></button>`).join('')}`
     : `<div class="gs-sub">CONVENCIONES</div>
     ${Object.entries(CONV).map(([k, c]) => `<div class="gs-conv"><b style="background:${c.c}">${k}</b><div>${c.t}<small>${c.a} · ${c.h}</small></div></div>`).join('')}`}`;
   const der = document.createElement('div'); der.className = 'gs-pan'; der.id = 'gs-der';
