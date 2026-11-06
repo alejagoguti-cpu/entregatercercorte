@@ -904,7 +904,7 @@ async function crearMallaGoogle(T) {
   tiles.setCamera(T.camera);
   tiles.setResolutionFromRenderer(T.camera, T.renderer);
   // carga progresiva: se empieza con poco detalle (aparecen enseguida los edificios en 3D) y se afina por etapas cuando termina cada una
-  T.errMeta = GOOGLE ? (T.movil ? 14 : 4) : REALISTA ? (T.movil ? 16 : 5) : (T.movil ? 28 : 14); // realista: contexto de Google nítido, como en God's Eye // meta: menor = más nítido (fachadas) pero más descarga
+  T.errMeta = GOOGLE ? (T.movil ? 14 : 4) : REALISTA ? (T.movil ? 16 : 5) : KEN ? (T.movil ? 18 : 6) : (T.movil ? 28 : 14); // modo Kennedy: la foto del suelo es lo que más se ve, se pide más nítida // realista: contexto de Google nítido, como en God's Eye // meta: menor = más nítido (fachadas) pero más descarga
   tiles.errorTarget = 56;
   T.tilesErr = 0; T.tilesT0 = performance.now(); T.mallaMostrada = false;
   tiles.addEventListener('load-error', (e) => { // antes los errores de Google se perdían en silencio
@@ -960,6 +960,7 @@ async function crearMallaGoogle(T) {
     scene.traverse(c => {
       const m = c.isMesh && c.material;
       if (!m || !m.map) return;
+      m.map.anisotropy = T.renderer.capabilities.getMaxAnisotropy(); m.map.needsUpdate = true; // la foto vista en ángulo deja de verse borrosa
       recorte(m);
       if (m.isMeshBasicMaterial) { m.color.setScalar(T.tilesLuz); m.toneMapped = false; } // los materiales de Google ya vienen sin luz
       else { m.emissiveMap = m.map; m.emissive.setScalar(T.tilesLuz); m.color.setScalar(0); m.roughness = 1; m.metalness = 0; m.toneMapped = false; m.needsUpdate = true; }
@@ -3029,7 +3030,7 @@ $('b-hd').onclick = async () => {
 
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
-  Promise.all([import('./data3d/giro_sim.js?v=6'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
+  Promise.all([import('./data3d/giro_sim.js?v=7'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
 } else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({
     T3: () => T3, traf: () => TRAF, peat: () => PEAT, pajaro: () => PAJARO, say, movil: MOVIL,

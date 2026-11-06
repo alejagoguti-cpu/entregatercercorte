@@ -246,7 +246,7 @@ export async function iniciarSimulacion(cfg = {}) {
       const anchos = [2.4, 1.5, 0.9];
       g.lineCap = 'round'; g.lineJoin = 'round';
       for (let gi = 2; gi >= 0; gi--) for (let ci = 0; ci < DEPTHMAP.length; ci++) {
-        g.globalAlpha = 0.32 + 0.5 * (ci / DEPTHMAP.length) * (gi === 2 ? 0.75 : 1); g.strokeStyle = colorDM((ci + 0.5) / DEPTHMAP.length); g.lineWidth = anchos[gi] * (0.75 + 0.5 * ci / DEPTHMAP.length); g.stroke(cubos[ci][gi]);
+        g.globalAlpha = 0.16 + 0.26 * (ci / DEPTHMAP.length) * (gi === 2 ? 0.75 : 1); g.strokeStyle = colorDM((ci + 0.5) / DEPTHMAP.length); g.lineWidth = anchos[gi] * (0.75 + 0.5 * ci / DEPTHMAP.length); g.stroke(cubos[ci][gi]);
       }
       g.globalAlpha = 1;
     }
@@ -418,7 +418,7 @@ export async function iniciarSimulacion(cfg = {}) {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); COLS = { i: new Float32Array(cI), c: new Float32Array(cC) };
     geo.setAttribute('color', new THREE.BufferAttribute(COLS.i.slice(), 3)); geo.setIndex(idx);
-    CINTAS = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }));
+    CINTAS = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }));
     CINTAS.renderOrder = 2; CINTAS.frustumCulled = false; T3.scene.add(CINTAS);
     capa3D = () => { if (!st0.capa) { CINTAS.visible = false; return; } CINTAS.visible = true; geo.attributes.color.array.set(COLS[st0.capa]); geo.attributes.color.needsUpdate = true; };
     // convenciones: borde de cuidado de los humedales, biofábrica, cocinas y huertas pintados en el suelo
@@ -461,7 +461,7 @@ export async function iniciarSimulacion(cfg = {}) {
     };
 
     // ---- look del giro de Unreal: imagen clara, un poco más saturada y sin viñeta oscura ----
-    T3.renderer.domElement.style.filter = 'saturate(1.12) contrast(1.03) brightness(1.04)';
+    T3.renderer.domElement.style.filter = 'saturate(0.92) contrast(1.02)';
     { const gr = document.getElementById('grade'); if (gr) gr.style.display = 'none'; }
     // ---- capa de flujo de agentes (análisis de agentes, como el "gate count" de DepthmapX): cuántos pasan por cada tramo ----
     const pf = new Float32Array(pos.length);
