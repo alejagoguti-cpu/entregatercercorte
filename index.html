@@ -705,6 +705,7 @@ $('b-night').onclick = e => {
   night = !night;
   e.currentTarget.classList.toggle('on', night);
   e.currentTarget.innerHTML = night ? ICONO_SOL + 'Día' : ICONO_LUNA + 'Noche';
+  if (mode === 'todo' && T3 && T3.reloj) { T3.reloj.t = night ? 20 * 60 + 30 : 6 * 60; say(night ? '🌙 La simulación salta a las 20:30' : '🌅 La simulación salta al amanecer (6:00)'); return; } // Kennedy: el cielo sigue la hora
   if (mode === 'todo') { todoNight(night); say(night ? '🌙 Noche TODO 3D' : '☀️ Día TODO 3D'); return; }
   if (mode === 'splat' && SPLAT && SPLAT.canvas) { SPLAT.canvas.classList.toggle('splat-night', night); say(night ? '🌙 Noche en el humedal' : '☀️ Día en el humedal'); return; }
   map.setPaintProperty('sat', 'raster-brightness-min', night ? -0.22 : 0);
@@ -3044,8 +3045,9 @@ $('b-hd').onclick = async () => {
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
-  Promise.all([import('./data3d/giro_sim.js?v=8'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED }))
-    .then(() => import('./data3d/biotica.js?v=2')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL }))
+  Promise.all([import('./data3d/giro_sim.js?v=10'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'] }))
+    .then(() => import('./data3d/cielo.js?v=2')).then(m => { T3.cielo = m.iniciarCielo({ THREE: T3.THREE, T3, luzMalla }); }) // cielo y luz de 24 horas con el reloj de la simulación
+    .then(() => import('./data3d/biotica.js?v=3')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL }))
     .catch(e => console.warn('simulación Kennedy:', e));
 } else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({

@@ -194,7 +194,7 @@ export async function iniciarSimulacion(cfg = {}) {
   const izq = document.createElement('div'); izq.className = 'gs-pan gs-act'; izq.id = 'gs-izq';
   izq.innerHTML = `<h3>SIMULACIÓN <em id="gs-dia">DÍA 1</em></h3>
     <div class="gs-reloj"><b id="gs-hora">06:30</b><small id="gs-jor">Antes de la jornada</small></div>
-    <input type="range" id="gs-t" min="${H(5, 30)}" max="${H(19, 30)}" step="1" aria-label="Hora del día">
+    <input type="range" id="gs-t" min="0" max="1439" step="1" aria-label="Hora del día (24 horas)">
     <div class="gs-fila"><button id="gs-play">❚❚</button><button data-v="20">x20</button><button data-v="60" class="on">x60</button><button data-v="240">x240</button></div>
     <div class="gs-sub">SINTAXIS ESPACIAL <span>DepthmapX</span></div>
     <div class="gs-fila gs-fila3" id="gs-capa"><button data-c="i" class="on">Integración</button><button data-c="c">Elección</button><button data-c="">Apagar</button></div>
@@ -220,6 +220,7 @@ export async function iniciarSimulacion(cfg = {}) {
   document.body.append(izq, der, tog);
   tog.onclick = () => { const on = !document.body.classList.contains('gs-abierto'); document.body.classList.toggle('gs-abierto', on); tog.classList.toggle('on', on); if (!on) return; const vis = izq.classList.contains('gs-act'); izq.classList.toggle('gs-act', !vis); der.classList.toggle('gs-act', vis); tog.textContent = vis ? 'ACTORES' : 'SIMULACIÓN'; };
   if (matchMedia('(max-width:760px)').matches) { izq.classList.remove('gs-act'); der.classList.add('gs-act'); }
+  if (M3) T3.reloj = st0; // el cielo de 24 horas (data3d/cielo.js) sigue esta hora
   const tl = $('gs-t'); tl.value = st0.t; tl.oninput = () => { st0.t = +tl.value; };
   $('gs-play').onclick = () => { st0.play = !st0.play; $('gs-play').textContent = st0.play ? '❚❚' : '▶'; };
   izq.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { st0.vel = +b.dataset.v; izq.querySelectorAll('[data-v]').forEach(x => x.classList.toggle('on', x === b)); });
@@ -286,7 +287,7 @@ export async function iniciarSimulacion(cfg = {}) {
   const mover2 = (a, vel, dt) => { const dx = a.obj[0] - a.x, dy = a.obj[1] - a.y, d = Math.hypot(dx, dy); if (d < 0.6) return true; const s = Math.min(d, vel * dt); a.x += dx / d * s; a.y += dy / d * s; return false; };
   function paso(dtR) {
     const T = st0.t, dtS = st0.play ? dtR * st0.vel / 60 : 0, F = Math.min(st0.vel, 8) * (st0.play ? 1 : 0), dt = dtR * F, dtT = dtS * 60; // dtT: segundos simulados (recorridos con horario) // dtS en minutos simulados; dt en segundos "visuales"
-    if (st0.play) { st0.t += dtS; if (st0.t > H(19, 30)) { st0.t = H(5, 30); st0.dia++; for (const k of Object.keys(IND)) IND[k] = 0; } }
+    if (st0.play) { st0.t += dtS; if (st0.t >= H(24)) { st0.t -= H(24); st0.dia++; for (const k of Object.keys(IND)) IND[k] = 0; } } // reloj de 24 horas: a medianoche empieza el día siguiente
     const humanos = [];
     for (const a of A) {
       if (a.red) { // tráfico y peatones
@@ -439,7 +440,7 @@ export async function iniciarSimulacion(cfg = {}) {
     const ALTO = { tingua: 0.6, garza: 1.4, pato: 0.4, monjita: 1.6, copeton: 0.8, mirla: 0.9, colibri: 2.2, abeja: 1.6 };
     const cuantos = {}; for (const a of A) cuantos[a.tipo] = (cuantos[a.tipo] || 0) + 1;
     for (const [k, t] of Object.entries(ACT)) {
-      if (!cuantos[k]) continue;
+      if (!cuantos[k] || (cfg.sinMalla || []).includes(k)) continue; // sinMalla: la lógica sigue (indicadores P4) pero se dibuja en la red biótica
       let g;
       if (FORMA[k]) { g = new THREE.BoxGeometry(...FORMA[k]); g.translate(0, FORMA[k][1] / 2, 0); }
       else if (t.g === 'h') { const nino = k === 'nino', r = nino ? 0.24 : 0.3; g = new THREE.CapsuleGeometry(r, nino ? 0.7 : 1.15, 3, 8); g.translate(0, (nino ? 0.7 : 1.15) / 2 + r, 0); }
@@ -611,7 +612,7 @@ export async function iniciarSimulacion(cfg = {}) {
       const T = st0.t, hh = Math.floor(T / 60), mm = Math.floor(T % 60);
       $('gs-hora').textContent = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); $('gs-dia').textContent = 'DÍA ' + st0.dia;
       if (document.activeElement !== tl) tl.value = Math.floor(T);
-      $('gs-jor').textContent = T < H(7) ? 'Amanece · antes de las jornadas' : T < H(11, 30) ? 'Jornada diurna' : T < H(14) ? 'Almuerzo' : T < H(17, 30) ? 'Jornada después del almuerzo' : 'Cae la tarde';
+      $('gs-jor').textContent = T < H(4, 45) ? 'Noche' : T < H(5, 40) ? 'Madrugada · alba' : T < H(7) ? 'Amanece · antes de las jornadas' : T < H(11, 30) ? 'Jornada diurna' : T < H(14) ? 'Almuerzo' : T < H(17, 30) ? 'Jornada después del almuerzo' : T < H(18, 30) ? 'Atardecer' : T < H(19, 15) ? 'Anochece' : 'Noche';
       for (const k of Object.keys(ACT)) { const e = $('gs-a-' + k); if (e) e.textContent = (k === 'hongo' ? (T > H(8) ? 600 : 0) : k === 'lombriz' ? Math.round(HUE.reduce((s, h) => s + h.lomb, 0)) : (act[k] || 0)).toLocaleString('es-CO'); }
       const f = (v, u, d = 0) => v.toLocaleString('es-CO', { maximumFractionDigits: d }) + (u ? ' ' + u : '');
       $('gs-i-rondas').textContent = f(IND.rondas, 'km', 1); $('gs-i-residuos').textContent = f(IND.residuos, 'kg', 1); $('gs-i-registros').textContent = f(IND.registros);
