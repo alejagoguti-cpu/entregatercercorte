@@ -426,12 +426,30 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   const mp = new Float32Array(AG.length * 3), mc = new Float32Array(AG.length * 4);
   AG.forEach((a, i) => { const c = new THREE.Color(CAT[ESP[a.e].cat]?.c || '#7DA0B8'); mc[i * 4] = c.r; mc[i * 4 + 1] = c.g; mc[i * 4 + 2] = c.b; mc[i * 4 + 3] = 1; });
   const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mp, 3).setUsage(THREE.DynamicDrawUsage)); mg.setAttribute('color', new THREE.BufferAttribute(mc, 4).setUsage(THREE.DynamicDrawUsage));
-  const marcas = new THREE.Points(mg, new THREE.PointsMaterial({ size: movil ? 7 : 9, map: disco, alphaTest: 0.3, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
+  // marca de lejos: TRIÁNGULO que apunta hacia donde avanza el animal (ángulo en pantalla por animal, calculado en cada cuadro)
+  const ma = new Float32Array(AG.length); mg.setAttribute('ang', new THREE.BufferAttribute(ma, 1).setUsage(THREE.DynamicDrawUsage));
+  const marcas = new THREE.Points(mg, new THREE.ShaderMaterial({
+    uniforms: { uTam: { value: (movil ? 12 : 14) * Math.min(2, devicePixelRatio || 1) } }, transparent: true, depthWrite: false,
+    vertexShader: `attribute float ang; attribute vec4 color; uniform float uTam; varying vec4 vC; varying float vA;
+      void main(){ vC = color; vA = ang; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = uTam; }`,
+    fragmentShader: `varying vec4 vC; varying float vA;
+      void main(){
+        if (vC.a < 0.01) discard;
+        vec2 q = gl_PointCoord * 2.0 - 1.0; q.y = -q.y;
+        float c = cos(-vA), s = sin(-vA); q = vec2(c * q.x - s * q.y, s * q.x + c * q.y);   // punta del triángulo hacia +y local
+        vec2 A = vec2(0.0, 0.92), B = vec2(-0.66, -0.72), C = vec2(0.66, -0.72);
+        float e0 = (B.x - A.x) * (q.y - A.y) - (B.y - A.y) * (q.x - A.x), e1 = (C.x - B.x) * (q.y - B.y) - (C.y - B.y) * (q.x - B.x), e2 = (A.x - C.x) * (q.y - C.y) - (A.y - C.y) * (q.x - C.x);
+        float d = min(min(e0 / length(B - A), e1 / length(C - B)), e2 / length(A - C)); // distancia (con signo) al borde más cercano
+        if (d < 0.0) discard;                        // afuera (vértices en sentido antihorario: adentro es positivo)
+        vec3 col = d < 0.16 ? vec3(0.03, 0.06, 0.1) : vC.rgb;  // borde oscuro para que se lea sobre cualquier fondo
+        gl_FragColor = vec4(col, vC.a);
+      }`
+  }));
   marcas.frustumCulled = false; marcas.renderOrder = 10; grupo.add(marcas);
   const lineas = { set visible(v) { FUERTE.o.visible = TENUE.o.visible = v; } };
   const alto = (a) => { const e = ESP[a.e]; return (e.ave ? (e.ave.alto + e.ave.len * 0.35) : 0.06) * MAL[a.e].s; };
   const ancla = (o, out) => { if (o.id !== undefined) { out[0] = o.x; out[1] = o.y + alto(o); out[2] = o.z; } else { out[0] = o.x; out[1] = o.y; out[2] = o.z; } return out; };
-  const P0 = [0, 0, 0], P1 = [0, 0, 0], Q = [0, 0, 0], Rr = [0, 0, 0];
+  const P0 = [0, 0, 0], P1 = [0, 0, 0], Q = [0, 0, 0], Rr = [0, 0, 0], VA = new THREE.Vector3(), VB = new THREE.Vector3();
   const CUENTA = new Array(TIPOS.length).fill(0), ENC = new Array(TIPOS.length).fill(0);
   let np = 0;
   function pintar(C, A, Bv, t, pulso, tiempo) {
@@ -461,7 +479,14 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
     if (sel && ESTADO.pot) for (const p of ESTADO.pot) pintar(FUERTE, sel, p.b, p.t, true, tiempo);
     for (const C of [FUERTE, TENUE]) { C.g.instanceCount = C.n * SEG; C.p.needsUpdate = true; C.c.needsUpdate = true; }
     pg.setDrawRange(0, np); pg.attributes.position.needsUpdate = true; pg.attributes.color.needsUpdate = true;
-    AG.forEach((a, i) => { mp[i * 3] = a.x; mp[i * 3 + 1] = a.y + alto(a) * 1.6 + 1.2; mp[i * 3 + 2] = a.z; mc[i * 4 + 3] = a.vis && ESTADO.agentes ? 1 : 0; });
+    const cam = T3.camera; cam.updateMatrixWorld();
+    AG.forEach((a, i) => {
+      const y = a.y + alto(a) * 1.6 + 1.2; mp[i * 3] = a.x; mp[i * 3 + 1] = y; mp[i * 3 + 2] = a.z; mc[i * 4 + 3] = a.vis && ESTADO.agentes ? 1 : 0;
+      // dirección en pantalla: se proyecta el punto y otro 6 m adelante en el rumbo del animal (adelante = +x girado por a.rot)
+      VA.set(a.x, y, a.z).project(cam); VB.set(a.x + Math.cos(a.rot) * 6, y, a.z - Math.sin(a.rot) * 6).project(cam);
+      ma[i] = Math.atan2((VB.y - VA.y) * innerHeight, (VB.x - VA.x) * innerWidth) - Math.PI / 2;
+    });
+    mg.attributes.ang.needsUpdate = true;
     mg.attributes.position.needsUpdate = true; mg.attributes.color.needsUpdate = true;
   }
   function redPotencial(a) {
