@@ -34,5 +34,9 @@ for e in E:
     elif e['type'] == 'node' and t.get('man_made') == 'water_tower': tanques.append(xy(e['lon'], e['lat']))
 # en la foto se ve un solo tanque blanco (detrás de la nave central)
 tanques = [t for t in tanques if t[0] > 9300] or tanques[:1]
-json.dump({'sitio': sitio, 'edif': edif, 'tanques': tanques}, open(os.path.join(RAIZ, 'data3d', 'bavaria.json'), 'w'), separators=(',', ':'))
+# zonas abiertas del plan Bavaria Común (E1), ubicadas sobre la imagen satelital: patio de carga (pavimento junto al acceso
+# de la Av. Boyacá), huerto (prado del oriente, entre los dos bosques) y compostaje (borde del parqueadero de asfalto)
+def rect(cx, cy, w, h): return [[cx - w / 2, cy - h / 2], [cx + w / 2, cy - h / 2], [cx + w / 2, cy + h / 2], [cx - w / 2, cy + h / 2]]
+zonas = {'patio': rect(9150, 3150, 70, 45), 'huerto': rect(9640, 3120, 80, 110), 'compost': rect(9520, 3040, 40, 30)}
+json.dump({'sitio': sitio, 'edif': edif, 'tanques': tanques, 'zonas': zonas, 'libres': list(zonas.values())}, open(os.path.join(RAIZ, 'data3d', 'bavaria.json'), 'w'), separators=(',', ':'))
 print('edificios', len(edif), 'tanques', tanques)

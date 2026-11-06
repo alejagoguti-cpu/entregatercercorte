@@ -1247,7 +1247,7 @@ async function initTodoReal() {
     // edificios en binario por celdas de 1 km (data3d/edif): primero las cercanas a la cámara, el resto en segundo plano
     const EI = await pEdifIdx;
     // antigua fábrica de Bavaria: modelo propio (data3d/bavaria.js); sus cajas genéricas se quitan
-    const pBav = GOOGLE ? Promise.resolve(null) : fetch('data3d/bavaria.json').then(r => r.json()).catch(() => null);
+    const pBav = GOOGLE ? Promise.resolve(null) : fetch('data3d/bavaria.json?v=2').then(r => r.json()).catch(() => null);
     const enPoli = (W, x, y) => { let c = false; for (let i = 0, j = W.length - 1; i < W.length; j = i++) { const a = W[i], b = W[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
     const deBavaria = (BV, b) => { if (!BV) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n; y /= n; return BV.edif.some(e => enPoli(e.p, x, y)); };
     // bodegas de Corabastos: modelo propio (data3d/corabastos.js); sus cajas genéricas se quitan
@@ -1276,7 +1276,7 @@ async function initTodoReal() {
       })();
     }
     marcarPaso('edif');
-    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=1').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
+    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=2').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
       .catch(e => console.warn('fábrica Bavaria:', e));
     if (!GOOGLE && !(LIVIANO && !MEDIO)) pCora.then(CO => CO && import('./data3d/corabastos.js?v=1').then(m => { T3.corabastos = m.construirCorabastos({ THREE, T3, lw, D: CO, liviano: LIVIANO }); }))
       .catch(e => console.warn('Corabastos:', e));
@@ -3060,7 +3060,13 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
   Promise.all([import('./data3d/giro_sim.js?v=14'), import('./data3d/estrategias.js?v=3'), listoK()])
-    .then(async ([m, me]) => { try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0 }); } catch (e) { console.warn('estrategias:', e); } return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: EST ? EST.lista : null, verEstrategia: (id, on) => EST && EST.ver(id, on) }); })
+    .then(async ([m, me]) => {
+      try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0 }); } catch (e) { console.warn('estrategias:', e); }
+      let PLAN = null; // E1 Bavaria Común: plan maestro de la antigua fábrica (data3d/bavaria_plan.js)
+      try { PLAN = await (await import('./data3d/bavaria_plan.js?v=1')).iniciarPlanBavaria({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 }); T3.planBavaria = PLAN; } catch (e) { console.warn('plan Bavaria:', e); }
+      const lista = EST ? EST.lista.slice() : []; if (PLAN) lista.unshift(PLAN.entrada);
+      return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: lista.length ? lista : null, verEstrategia: (id, on) => id === 'E1' ? PLAN && PLAN.ver(on) : EST && EST.ver(id, on) });
+    })
     .then(() => import('./data3d/cielo.js?v=3')).then(m => { T3.cielo = m.iniciarCielo({ THREE: T3.THREE, T3, luzMalla }); }) // cielo y luz de 24 horas con el reloj de la simulación
     .then(() => import('./data3d/biotica.js?v=8')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL, huertas: EST ? EST.sitios(['E2']) : null }))
     .catch(e => console.warn('simulación Kennedy:', e));
