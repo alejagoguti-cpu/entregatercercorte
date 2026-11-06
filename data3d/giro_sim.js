@@ -449,6 +449,24 @@ export async function iniciarSimulacion(cfg = {}) {
       const m = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial({ color: col, emissive: col.clone().multiplyScalar(0.35) }), cuantos[k]);
       m.count = 0; m.frustumCulled = false; m.castShadow = !!FORMA[k]; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); T3.scene.add(m); MALLAS[k] = m;
     }
+    // ---- luces de los vehículos de noche (T3.noche: 0 de día, 1 de noche; la pone data3d/cielo.js): faros, luces traseras y haz en el piso ----
+    const LUZ = {}; // tipo -> [faros, traseras, haz] (mismas matrices que la caja; el frente es +z)
+    {
+      const haz = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d'), gr = x.createLinearGradient(0, 128, 0, 0); gr.addColorStop(0, 'rgba(255,236,200,0.9)'); gr.addColorStop(1, 'rgba(255,236,200,0)'); x.fillStyle = gr; x.beginPath(); x.moveTo(24, 128); x.lineTo(40, 128); x.lineTo(64, 0); x.lineTo(0, 0); x.closePath(); x.fill(); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+      const mFaro = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.9, 2.3), toneMapped: false }), mRoja = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 0.15, 0.1), toneMapped: false });
+      const mHaz = new THREE.MeshBasicMaterial({ map: haz, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      const unir = (L) => { const G = L.map(g => g.toNonIndexed()), n = G.reduce((s, g) => s + g.attributes.position.count, 0), P = new Float32Array(n * 3); let o = 0; for (const g of G) { P.set(g.attributes.position.array, o); o += g.attributes.position.array.length; } const r = new THREE.BufferGeometry(); r.setAttribute('position', new THREE.BufferAttribute(P, 3)); return r; };
+      for (const k of Object.keys(FORMA)) {
+        if (!MALLAS[k]) continue; const [w, h, l] = FORMA[k], par = k === 'carro' || k === 'camion';
+        const caja = (x, y, z, sx, sy, sz) => { const g = new THREE.BoxGeometry(sx, sy, sz); g.translate(x, y, z); return g; };
+        const faros = unir(par ? [caja(-w * 0.32, h * 0.42, l / 2 + 0.03, 0.34, 0.16, 0.06), caja(w * 0.32, h * 0.42, l / 2 + 0.03, 0.34, 0.16, 0.06)] : [caja(0, h * 0.6, l / 2 + 0.03, 0.18, 0.14, 0.06)]);
+        const rojas = unir(par ? [caja(-w * 0.36, h * 0.48, -l / 2 - 0.03, 0.26, 0.2, 0.06), caja(w * 0.36, h * 0.48, -l / 2 - 0.03, 0.26, 0.2, 0.06)] : [caja(0, h * 0.55, -l / 2 - 0.03, 0.14, 0.1, 0.05)]);
+        const lh = k === 'bici' ? 5 : 13, gh = new THREE.PlaneGeometry(par ? w * 1.9 : 1.6, lh); gh.rotateX(-Math.PI / 2); gh.translate(0, 0.12, l / 2 + lh / 2);
+        const im = (g, m) => { const x = new THREE.InstancedMesh(g, m, cuantos[k]); x.count = 0; x.frustumCulled = false; x.visible = false; x.instanceMatrix = MALLAS[k].instanceMatrix; T3.scene.add(x); return x; };
+        LUZ[k] = [im(faros, mFaro), im(rojas, mRoja), im(gh, mHaz)];
+      }
+      LUZ._haz = mHaz;
+    }
     const d = new THREE.Object3D(), n = {};
     actualizar3D = () => {
       const activos = {}; for (const k in n) n[k] = 0;
@@ -460,6 +478,9 @@ export async function iniciarSimulacion(cfg = {}) {
         const i = n[a.tipo] = (n[a.tipo] || 0); m.setMatrixAt(i, d.matrix); n[a.tipo] = i + 1;
       }
       for (const [k, m] of Object.entries(MALLAS)) { m.count = n[k] || 0; m.instanceMatrix.needsUpdate = true; }
+      const noche = T3.noche || 0; // luces de los vehículos: se prenden al atardecer
+      for (const k of Object.keys(LUZ)) if (k !== '_haz') for (const x of LUZ[k]) { x.visible = noche > 0.05; x.count = n[k] || 0; }
+      LUZ._haz.opacity = Math.min(1, noche) * 0.55;
       g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, W, Hh); etiquetas(); seleccion(1 / 60);
       return activos;
     };

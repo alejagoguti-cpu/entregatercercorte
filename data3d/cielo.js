@@ -115,7 +115,7 @@ export function iniciarCielo({ THREE, T3, luzMalla }) {
     const deDia = el > -3, L = deDia ? sd : md, elL = deDia ? el : mel;
     const dirL = L.clone(); if (dirL.y < 0.07) { dirL.y = 0.07; dirL.normalize(); } // sombras largas pero sin pasar bajo el horizonte
     T3.sunOff.copy(dirL).multiplyScalar(2600);
-    T3.sun.color.copy(P.sol); T3.sun.intensity = deDia ? P.si * Math.max(0, Math.min(1, (el + 3) / 4)) * (1 - U.uCloud.value * 0.35) : 0.22 * Math.max(0, Math.min(1, elL / 8)) + 0.04;
+    T3.sun.color.copy(P.sol); T3.sun.intensity = deDia ? P.si * Math.max(0, Math.min(1, (el + 3) / 4)) * (1 - U.uCloud.value * 0.35) : 0.14 * Math.max(0, Math.min(1, elL / 8)) + 0.03;
     T3.hemi.color.copy(P.hemi); T3.hemi.groundColor.copy(P.suelo); T3.hemi.intensity = P.hi * (1 - U.uCloud.value * 0.12);
     T3.renderer.toneMappingExposure = P.exp;
     // agua: reflejo del cielo y del sol
@@ -124,6 +124,10 @@ export function iniciarCielo({ THREE, T3, luzMalla }) {
     // foto 3D de Google: brillo y tinte (no se recalcula en cada cuadro: recorre todas las teselas)
     if (T3.maskU && T3.maskU.uTint) T3.maskU.uTint.value.set(P.tinte[0], P.tinte[1], P.tinte[2]);
     if ((tMalla -= dt) <= 0 && Math.abs(P.malla - ultMalla) > 0.015) { tMalla = 0.4; ultMalla = P.malla; luzMalla(T3, P.malla); }
+    // noche (0 de día, 1 de noche cerrada): enciende ventanas y luces de los carros, graduado desde la puesta del sol
+    const noche = Math.max(0, Math.min(1, (2 - el) / 9)); T3.noche = noche * noche * (3 - 2 * noche);
+    const luces = hora >= 17 && hora < 23 ? 0.62 : hora >= 23 ? 0.62 - (hora - 23) * 0.4 : hora < 4.5 ? 0.2 : hora < 6.5 ? 0.2 + (hora - 4.5) * 0.12 : 0.4; // más ventanas prendidas al anochecer, pocas de madrugada
+    if (T3.roofU && T3.roofU.uNoche) { T3.roofU.uNoche.value = T3.noche; T3.roofU.uLuces.value = luces; }
     return { hora, el };
   }
   let ult = performance.now();
