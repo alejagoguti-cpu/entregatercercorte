@@ -31,7 +31,8 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0 }) {
 
   // etiquetas de los sitios (E1, E2, E4: pocos lotes grandes; E3 y E5 son miles, van solo en la leyenda)
   const css = document.createElement('style'); css.textContent = `
-.es-et{position:fixed;z-index:8;transform:translate(-50%,-100%);pointer-events:none;padding:4px 9px;border-radius:9px;background:rgba(8,16,26,.86);border:1.5px solid var(--c);color:#e2f3ff;font:700 11px system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap}
+.es-et{position:fixed;z-index:8;transform:translate(-50%,-100%);pointer-events:auto;cursor:pointer;padding:4px 9px;border-radius:9px;background:rgba(8,16,26,.86);border:1.5px solid var(--c);color:#e2f3ff;font:700 11px system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap;transition:transform .15s}
+.es-et:hover{transform:translate(-50%,-105%) scale(1.05);background:rgba(15,23,42,.95)}
 .es-et b{color:var(--c);margin-right:5px}.es-et::after{content:'';position:absolute;left:50%;top:100%;width:1.5px;height:12px;background:var(--c)}
 @media(max-width:760px){.es-et{font-size:10px;padding:3px 7px}}`;
   document.head.appendChild(css);
@@ -44,7 +45,9 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0 }) {
       for (let k = 0; k < n; k++) { const p = [l[k * 2] * esc, l[k * 2 + 1] * esc], q = [l[((k + 1) % n) * 2] * esc, l[((k + 1) % n) * 2 + 1] * esc]; a += p[0] * q[1] - q[0] * p[1]; x += p[0]; y += p[1]; }
       if (Math.abs(a) / 2 < 5000) continue; x /= n; y /= n;
       if (vistos.some(v => Math.hypot(v[0] - x, v[1] - y) < 700)) continue; vistos.push([x, y]);
-      const d = document.createElement('div'); d.className = 'es-et'; d.style.setProperty('--c', e.c); d.innerHTML = `<b>${e.id}</b>${e.n}`; document.body.appendChild(d);
+      const d = document.createElement('div'); d.className = 'es-et'; d.style.setProperty('--c', e.c); d.innerHTML = `<b>${e.id}</b>${e.n}`;
+      d.onclick = () => { if (window.MOSTRAR_RED_ACTORES) window.MOSTRAR_RED_ACTORES(e.id); };
+      document.body.appendChild(d);
       const w = lw(x, y); ET.push({ d, id: e.id, p: new THREE.Vector3(w[0], Y0 + 14, w[1]) });
     }
   }

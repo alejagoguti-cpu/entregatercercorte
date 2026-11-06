@@ -3062,13 +3062,21 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=14'), import('./data3d/estrategias.js?v=3'), listoK()])
-    .then(async ([m, me]) => {
+  Promise.all([import('./data3d/giro_sim.js?v=15'), import('./data3d/estrategias.js?v=4'), import('./data3d/red_actores.js?v=1'), listoK()])
+    .then(async ([m, me, mRed]) => {
+      const redUI = mRed.iniciarRedActoresUI({ T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 });
+      window.MOSTRAR_RED_ACTORES = (id) => redUI.mostrarRedActores(id);
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0 }); } catch (e) { console.warn('estrategias:', e); }
       let PLAN = null; // E1 Bavaria Común: plan maestro de la antigua fábrica (data3d/bavaria_plan.js)
       try { PLAN = await (await import('./data3d/bavaria_plan.js?v=1')).iniciarPlanBavaria({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 }); T3.planBavaria = PLAN; } catch (e) { console.warn('plan Bavaria:', e); }
       const lista = EST ? EST.lista.slice() : []; if (PLAN) lista.unshift(PLAN.entrada);
-      return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: lista.length ? lista : null, verEstrategia: (id, on) => id === 'E1' ? PLAN && PLAN.ver(on) : EST && EST.ver(id, on) });
+      return m.iniciarSimulacion({
+        T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'],
+        estrategias: lista.length ? lista : null,
+        verEstrategia: (id, on) => id === 'E1' ? PLAN && PLAN.ver(on) : EST && EST.ver(id, on),
+        mostrarRedActores: (id) => redUI.mostrarRedActores(id),
+        ocultarRedActores: () => redUI.ocultarRedActores()
+      });
     })
     .then(() => import('./data3d/cielo.js?v=3')).then(m => { T3.cielo = m.iniciarCielo({ THREE: T3.THREE, T3, luzMalla }); }) // cielo y luz de 24 horas con el reloj de la simulación
     .then(() => import('./data3d/biotica.js?v=8')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL, huertas: EST ? EST.sitios(['E2']) : null }))

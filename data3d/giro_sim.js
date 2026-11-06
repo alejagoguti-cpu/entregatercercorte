@@ -207,7 +207,7 @@ export async function iniciarSimulacion(cfg = {}) {
     <div class="gs-ley"><span>baja</span><i></i><span>alta</span></div>
     <div class="gs-fila" style="grid-template-columns:1fr 1fr"><button id="gs-ag" class="on">Agentes</button><button id="gs-cv-b" class="${SINP ? '' : 'on'}">${SINP ? 'Estrategias' : 'Convenciones'}</button></div>
     ${SINP ? `<div class="gs-sub">ESTRATEGIAS <span>toca para ver u ocultar</span></div>
-    ${EST.map(e => `<button class="gs-conv gs-est" data-e="${e.id}" style="opacity:.4;width:100%;height:auto;padding:4px 6px;background:none;text-align:left;font:inherit;color:inherit;letter-spacing:0;cursor:pointer"><b style="background:${e.c}">${e.id}</b><div>${e.n}<small>${e.n_lotes.toLocaleString('es-CO')} lotes · ${(e.area / 1e4).toLocaleString('es-CO', { maximumFractionDigits: 1 })} ha</small></div></button>`).join('')}`
+    ${EST.map(e => `<button class="gs-conv gs-est" data-e="${e.id}" style="opacity:.4;width:100%;height:auto;padding:5px 7px;background:none;text-align:left;font:inherit;color:inherit;letter-spacing:0;cursor:pointer;display:flex;align-items:center;gap:6px"><b style="background:${e.c}">${e.id}</b><div style="flex:1">${e.n}<small>${e.n_lotes.toLocaleString('es-CO')} lotes · ${(e.area / 1e4).toLocaleString('es-CO', { maximumFractionDigits: 1 })} ha</small></div><span class="gs-red-pill" title="Ver red de actores de esta estrategia" style="font-size:9.5px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#e2f3ff">🕸️ Red</span></button>`).join('')}`
     : `<div class="gs-sub">CONVENCIONES</div>
     ${Object.entries(CONV).map(([k, c]) => `<div class="gs-conv"><b style="background:${c.c}">${k}</b><div>${c.t}<small>${c.a} · ${c.h}</small></div></div>`).join('')}`}`;
   const der = document.createElement('div'); der.className = 'gs-pan'; der.id = 'gs-der';
@@ -259,7 +259,28 @@ export async function iniciarSimulacion(cfg = {}) {
   $('gs-cv-b').onclick = (e) => { st0.conv = !st0.conv; e.currentTarget.classList.toggle('on', st0.conv); vCache = -1;
     if (SINP) { izq.querySelectorAll('.gs-est').forEach(b => { b.classList.toggle('on', st0.conv); b.style.opacity = st0.conv ? 1 : 0.4; }); if (cfg.verEstrategia) for (const x of EST) cfg.verEstrategia(x.id, st0.conv); return; }
     if (M3) ZONAS3D.visible = st0.conv; };
-  izq.querySelectorAll('.gs-est').forEach(b => b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.style.opacity = on ? 1 : 0.4; if (cfg.verEstrategia) cfg.verEstrategia(b.dataset.e, on); });
+  izq.querySelectorAll('.gs-est').forEach(b => {
+    b.onclick = (e) => {
+      const clickEnPill = e.target && e.target.closest && e.target.closest('.gs-red-pill');
+      if (clickEnPill) {
+        e.stopPropagation();
+        b.classList.add('on');
+        b.style.opacity = 1;
+        if (cfg.verEstrategia) cfg.verEstrategia(b.dataset.e, true);
+        if (cfg.mostrarRedActores) cfg.mostrarRedActores(b.dataset.e);
+        return;
+      }
+      const on = !b.classList.contains('on');
+      b.classList.toggle('on', on);
+      b.style.opacity = on ? 1 : 0.4;
+      if (cfg.verEstrategia) cfg.verEstrategia(b.dataset.e, on);
+      if (on) {
+        if (cfg.mostrarRedActores) cfg.mostrarRedActores(b.dataset.e);
+      } else {
+        if (cfg.ocultarRedActores) cfg.ocultarRedActores(b.dataset.e);
+      }
+    };
+  });
 
   /* ---------- capa fija por ángulo: calles con sintaxis espacial y zonas de las convenciones ---------- */
   let vCache = -1, W = 0, Hh = 0, dpr = 1;
