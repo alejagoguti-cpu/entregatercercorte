@@ -601,7 +601,7 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   cvs.addEventListener('pointerup', e => {
     if (!pd || Math.hypot(e.clientX - pd[0], e.clientY - pd[1]) > 6) return; const r = cvs.getBoundingClientRect(); let best = null, bd = 22;
     for (const a of AG) { if (!a.vis) continue; pv.set(a.x, a.y + 0.5, a.z).project(T3.camera); if (pv.z > 1) continue; const sx = (pv.x + 1) / 2 * r.width + r.left, sy = (1 - pv.y) / 2 * r.height + r.top, d = Math.hypot(sx - e.clientX, sy - e.clientY); if (d < bd) { bd = d; best = a; } }
-    if (best) seleccionar(best, false);
+    if (best) { seleccionar(best, false); abrirRed(best.e); } // clic en un animal: su ficha y la ventana con la red de su especie
   });
 
   /* ---------- ventana con la red de una especie (red ego: la especie al centro y sus relaciones alrededor) ---------- */
@@ -615,7 +615,8 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
 #bt-red .acc button{height:30px;padding:0 12px;border:none;border-radius:8px;background:rgba(255,255,255,.07);color:#cbd5e1;font:700 10px system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}
 #bt-red .acc button.x{width:30px;padding:0;font-size:16px}
 #bt-red .cuerpo{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-top:10px}
-#bt-red svg.g{width:100%;height:auto;display:block}
+#bt-red .lienzo{position:relative}#bt-red canvas{width:100%;display:block;cursor:grab;touch-action:none}
+#bt-red .tip{position:absolute;display:none;max-width:220px;padding:6px 8px;border-radius:8px;background:rgba(4,10,18,.94);border:1px solid rgba(125,211,252,.3);font-size:10.5px;pointer-events:none}#bt-red .tip b,#bt-red .tip span,#bt-red .tip small{display:block}#bt-red .tip small{color:#94a3b8;margin-top:2px}
 #bt-red .ley{display:flex;flex-wrap:wrap;gap:4px 12px;margin:6px 0 2px;font-size:10.5px;color:#cbd5e1}
 #bt-red .ley span{display:flex;align-items:center;gap:5px}#bt-red .ley i{width:14px;height:3px;border-radius:2px}
 #bt-red .lista{max-height:420px;overflow:auto;scrollbar-width:thin}
@@ -625,42 +626,94 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
 @media(max-width:760px){#bt-red .cuerpo{grid-template-columns:1fr}#bt-red .lista{max-height:none}#bt-red .acc button.vt{display:none}}`;
   document.head.appendChild(css2);
   const red = document.createElement('div'); red.id = 'bt-red'; document.body.appendChild(red);
-  red.addEventListener('click', e => { if (e.target === red) red.classList.remove('on'); });
-  addEventListener('keydown', e => { if (e.key === 'Escape') red.classList.remove('on'); });
+  red.addEventListener('click', e => { if (e.target === red) { red.classList.remove('on'); cancelAnimationFrame(animRed); } });
+  addEventListener('keydown', e => { if (e.key === 'Escape') { red.classList.remove('on'); cancelAnimationFrame(animRed); } });
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let animRed = 0;
+  const imgCache = {}; const imagen = (k) => { if (!imgCache[k]) { const im = new Image(); im.src = IMG[k]; imgCache[k] = im; } return imgCache[k]; };
   function abrirRed(k) {
     const e = ESP[k], R = REL[k], V = [];
-    for (const [f, r] of R.flora) V.push({ n: B.flora[f].n, t: r.t, rol: r.rol, r: r.r, flora: true });
+    for (const [f, r] of R.flora) V.push({ n: B.flora[f].n, f, t: r.t, rol: r.rol, r: r.r, flora: true });
     for (const r of R.fauna) V.push({ n: ESP[r.o].n, k: r.o, t: r.t, rol: r.rol, r: r.r });
     V.sort((p, q) => p.t - q.t || (p.flora ? 1 : 0) - (q.flora ? 1 : 0) || p.n.localeCompare(q.n));
-    // dibujo: la especie al centro; vecinos en un anillo agrupados por tipo de relación; flecha = quién actúa sobre quién
-    const W = 560, H = 520, cx = W / 2, cy = H / 2, Rr = V.length > 26 ? 205 : 180, n = Math.max(1, V.length);
-    let svg = `<svg class="g" viewBox="0 0 ${W} ${H}" role="img" aria-label="Red de ${esc(e.n)}"><defs>${TIPOS.map(t => `<marker id="fl${t.id}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L8 4L0 8z" fill="${t.c}"/></marker>`).join('')}</defs>`;
-    V.forEach((v, i) => {
-      const a = -Math.PI / 2 + (i + 0.5) / n * Math.PI * 2, x = cx + Math.cos(a) * Rr, y = cy + Math.sin(a) * Rr, c = TIPOS[v.t].c;
-      const mx = cx + Math.cos(a) * Rr * 0.5 + Math.cos(a + Math.PI / 2) * 14, my = cy + Math.sin(a) * Rr * 0.5 + Math.sin(a + Math.PI / 2) * 14;
-      const x0 = cx + Math.cos(a) * 34, y0 = cy + Math.sin(a) * 34, x1 = x - Math.cos(a) * (v.flora ? 9 : 17), y1 = y - Math.sin(a) * (v.flora ? 9 : 17);
-      svg += `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)}Q${mx.toFixed(1)} ${my.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="${c}" stroke-width="1.4" stroke-opacity=".9" ${v.rol === 'a' ? `marker-end="url(#fl${v.t})"` : `marker-start="url(#fl${v.t})"`}/>`;
-    });
-    V.forEach((v, i) => {
-      const a = -Math.PI / 2 + (i + 0.5) / n * Math.PI * 2, x = cx + Math.cos(a) * Rr, y = cy + Math.sin(a) * Rr, der = Math.cos(a) >= 0;
-      const tx = cx + Math.cos(a) * (Rr + (v.flora ? 14 : 22)), ty = cy + Math.sin(a) * (Rr + (v.flora ? 14 : 22)) + 3, lab = v.n.length > 24 ? v.n.slice(0, 23) + '…' : v.n;
-      if (v.flora) svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${CAT[0].c}" stroke="#08101a" stroke-width="1.5"/>`;
-      else svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="16" fill="#0f1b29" stroke="${CAT[ESP[v.k].cat].c}" stroke-width="1.5"/><image href="${IMG[v.k]}" x="${(x - 14).toFixed(1)}" y="${(y - 9).toFixed(1)}" width="28" height="17"/>`;
-      svg += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="${V.length > 30 ? 8.5 : 9.5}" fill="${v.flora ? '#b9c9bd' : '#e2f3ff'}" text-anchor="${Math.abs(Math.cos(a)) < 0.2 ? 'middle' : der ? 'start' : 'end'}">${esc(lab)}</text>`;
-    });
-    svg += `<circle cx="${cx}" cy="${cy}" r="32" fill="#0f1b29" stroke="${CAT[e.cat].c}" stroke-width="2.5"/><image href="${IMG[k]}" x="${cx - 26}" y="${cy - 16}" width="52" height="32"/></svg>`;
+    // conexiones entre los vecinos (también están relacionados entre sí en la red)
+    const VV = [];
+    for (let i = 0; i < V.length; i++) for (let j = 0; j < V.length; j++) {
+      const p = V[i], q = V[j]; if (!p.k) continue;
+      if (q.flora) { const r = REL[p.k].flora.get(q.f); if (r && r.rol === 'a') VV.push([i, j, r.t]); }
+      else if (q.k && i !== j) { const r = REL[p.k].fauna.find(x => x.o === q.k && x.rol === 'a'); if (r) VV.push([i, j, r.t]); }
+    }
+    // posiciones en una esfera (Fibonacci), en orden de tipo de relación: cada tipo queda agrupado
+    const n = Math.max(1, V.length);
+    V.forEach((v, i) => { const y = 1 - (i + 0.5) / n * 2, rr = Math.sqrt(1 - y * y), th = i * 2.39996; v.p = [Math.cos(th) * rr, y, Math.sin(th) * rr]; });
     const tipos = [...new Set(V.map(v => v.t))];
     const grupos = tipos.map(t => `<div class="grp" style="color:${TIPOS[t].c}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="${TIPOS[t].c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SVG[t]}</svg>${esc(TIPOS[t].n.toUpperCase())} · ${V.filter(v => v.t === t).length}</div>`
-      + V.filter(v => v.t === t).map(v => `<div class="it"><b>${v.rol === 'a' ? esc(e.n) + ' → ' + esc(v.n) : esc(v.n) + ' → ' + esc(e.n)}</b><small>${esc(v.r || '')}</small></div>`).join('')).join('');
+      + V.map((v, i) => v.t === t ? `<div class="it" data-i="${i}"><b>${v.rol === 'a' ? esc(e.n) + ' → ' + esc(v.n) : esc(v.n) + ' → ' + esc(e.n)}</b><small>${esc(v.r || '')}</small></div>` : '').join('')).join('');
     const nInd = POR[k] ? POR[k].length : 0;
-    red.innerHTML = `<div class="v"><div class="cab"><img src="${IMG[k]}" alt=""><div><h4>${esc(e.n)}</h4><em>${esc(e.sci || '')} · ${CAT[e.cat].n} · ${nInd} individuos en el territorio · ${V.length} relaciones</em></div>
+    red.innerHTML = `<div class="v"><div class="cab"><img src="${IMG[k]}" alt=""><div><h4>${esc(e.n)}</h4><em>${esc(e.sci || '')} · ${CAT[e.cat].n} · ${nInd} individuos en el territorio · ${V.length} relaciones · ${VV.length} conexiones entre ellas</em></div>
       <div class="acc"><button class="vt">VER EN EL TERRITORIO</button><button class="x" aria-label="Cerrar">×</button></div></div>
-      <div class="ley">${tipos.map(t => `<span><i style="background:${TIPOS[t].c}"></i>${esc(TIPOS[t].n)}</span>`).join('')}<span style="color:#94a3b8">flecha: quién actúa sobre quién</span></div>
-      <div class="cuerpo"><div>${svg}</div><div class="lista">${grupos || '<div class="it">Sin relaciones en la red.</div>'}</div></div></div>`;
-    red.querySelector('.x').onclick = () => red.classList.remove('on');
-    red.querySelector('.vt').onclick = () => { red.classList.remove('on'); const L = (POR[k] || []).filter(a => a.vis); if (L.length) seleccionar(L[Math.floor(rnd() * L.length)], true); };
+      <div class="ley">${tipos.map(t => `<span><i style="background:${TIPOS[t].c}"></i>${esc(TIPOS[t].n)}</span>`).join('')}<span><b style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${CAT[0].c}"></b>árbol del censo</span><span style="color:#94a3b8">arrastra para girar · toca un animal para ver su red</span></div>
+      <div class="cuerpo"><div class="lienzo"><canvas aria-label="Red de ${esc(e.n)} en esfera"></canvas><div class="tip"></div></div><div class="lista">${grupos || '<div class="it">Sin relaciones en la red.</div>'}</div></div></div>`;
+    red.querySelector('.x').onclick = () => { red.classList.remove('on'); cancelAnimationFrame(animRed); };
+    red.querySelector('.vt').onclick = () => { red.classList.remove('on'); cancelAnimationFrame(animRed); const L = (POR[k] || []).filter(a => a.vis); if (L.length) seleccionar(L[Math.floor(rnd() * L.length)], true); };
     red.classList.add('on');
+
+    // ---- dibujo de la bola ----
+    const cv = red.querySelector('canvas'), g = cv.getContext('2d'), tip = red.querySelector('.tip');
+    let W = 0, H = 0, dpr = 1; const medir = () => { dpr = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth; H = Math.round(W * 0.86); cv.style.height = H + 'px'; cv.width = W * dpr; cv.height = H * dpr; };
+    medir();
+    let yaw = 0.4, pitch = -0.25, auto = true, arr = null, hover = -1, sel = -1;
+    const proy = (p) => { const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch); let x = p[0] * cy - p[2] * sy, z = p[0] * sy + p[2] * cy, y = p[1] * cp - z * sp; z = p[1] * sp + z * cp; const s = 2.6 / (2.6 + z), R = Math.min(W, H) * 0.36; return [W / 2 + x * R * s, H / 2 - y * R * s, z, s]; };
+    const bola = (x, y, r, c, luz) => { const gr = g.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.18, c); gr.addColorStop(1, luz); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill(); };
+    const oscuro = (hex, k) => { const c = new THREE.Color(hex).multiplyScalar(k); return '#' + c.getHexString(); };
+    const lista = red.querySelector('.lista');
+    const marcar = (i) => { lista.querySelectorAll('.it').forEach(x => x.style.background = +x.dataset.i === i ? 'rgba(125,211,252,.1)' : ''); };
+    lista.querySelectorAll('.it').forEach(x => { x.onmouseenter = () => { sel = +x.dataset.i; }; x.onmouseleave = () => { sel = -1; }; });
+    let tPrev = performance.now();
+    const cuadro = () => {
+      const ahora = performance.now(), dt = Math.min(0.05, (ahora - tPrev) / 1000); tPrev = ahora;
+      if (cv.clientWidth !== W) medir();
+      if (auto && !arr) yaw += dt * 0.25;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      const P = V.map(v => proy(v.p)), C = [W / 2, H / 2, 0, 1], foco = hover >= 0 ? hover : sel;
+      // conexiones entre vecinos (finas)
+      g.lineWidth = 1;
+      for (const [i, j, t] of VV) { const a = P[i], b = P[j], on = foco === i || foco === j; g.strokeStyle = TIPOS[t].c; g.globalAlpha = (on ? 0.75 : 0.16) * (0.5 + 0.5 * (1 - (a[2] + b[2]) / 2) / 2); g.beginPath(); g.moveTo(a[0], a[1]); g.quadraticCurveTo((a[0] + b[0]) / 2 + (W / 2 - (a[0] + b[0]) / 2) * 0.25, (a[1] + b[1]) / 2 + (H / 2 - (a[1] + b[1]) / 2) * 0.25, b[0], b[1]); g.stroke(); }
+      // relaciones con la especie del centro, con un pulso de quien actúa hacia quien recibe
+      V.forEach((v, i) => {
+        const a = P[i], on = foco === i, fr = 0.35 + 0.65 * (1 - a[2]) / 2;
+        g.strokeStyle = TIPOS[v.t].c; g.globalAlpha = on ? 1 : (foco >= 0 ? 0.25 : 0.75) * fr; g.lineWidth = on ? 2.4 : 1.4;
+        g.beginPath(); g.moveTo(C[0], C[1]); g.lineTo(a[0], a[1]); g.stroke();
+        const u = ((ahora / 1000) * 0.45 + i * 0.137) % 1, s = v.rol === 'a' ? u : 1 - u; g.fillStyle = TIPOS[v.t].c; g.beginPath(); g.arc(C[0] + (a[0] - C[0]) * s, C[1] + (a[1] - C[1]) * s, on ? 3.2 : 2.2, 0, 6.2832); g.fill();
+      });
+      g.globalAlpha = 1;
+      // esferas: de atrás hacia adelante; el centro va donde le toca por profundidad (z = 0)
+      const orden = V.map((v, i) => i).sort((i, j) => P[j][2] - P[i][2]); let centroHecho = false;
+      const centro = () => { const r = Math.min(W, H) * 0.075; bola(C[0], C[1], r, CAT[e.cat].c, oscuro(CAT[e.cat].c, 0.35)); const im = imagen(k); if (im.complete) g.drawImage(im, C[0] - r * 0.85, C[1] - r * 0.52, r * 1.7, r * 1.04); g.font = '700 12px system-ui,sans-serif'; g.textAlign = 'center'; g.fillStyle = '#e2f3ff'; g.fillText(e.n, C[0], C[1] + r + 15); centroHecho = true; };
+      for (const i of orden) {
+        const v = V[i], a = P[i]; if (!centroHecho && a[2] < 0) centro();
+        const r = (v.flora ? 7 : 15) * a[3] * (foco === i ? 1.25 : 1), c = v.flora ? CAT[0].c : CAT[ESP[v.k].cat].c, fr = 0.45 + 0.55 * (1 - a[2]) / 2;
+        g.globalAlpha = foco >= 0 && foco !== i ? 0.55 * fr + 0.2 : fr;
+        bola(a[0], a[1], r, c, oscuro(c, 0.3));
+        if (!v.flora) { const im = imagen(v.k); if (im.complete) g.drawImage(im, a[0] - r * 0.85, a[1] - r * 0.52, r * 1.7, r * 1.04); }
+        g.strokeStyle = TIPOS[v.t].c; g.lineWidth = foco === i ? 2.5 : 1.2; g.beginPath(); g.arc(a[0], a[1], r + 1.5, 0, 6.2832); g.stroke();
+        if (a[2] < -0.25 || foco === i || (!v.flora && a[2] < 0.3)) { g.font = (foco === i ? '700 ' : '') + '10px system-ui,sans-serif'; g.textAlign = a[0] >= W / 2 ? 'left' : 'right'; g.fillStyle = v.flora ? '#b9c9bd' : '#e2f3ff'; g.fillText(v.n.length > 26 ? v.n.slice(0, 25) + '…' : v.n, a[0] + (a[0] >= W / 2 ? r + 4 : -r - 4), a[1] + 3); }
+        g.globalAlpha = 1;
+      }
+      if (!centroHecho) centro();
+      cv._P = P;
+      animRed = requestAnimationFrame(cuadro);
+    };
+    const cerca = (ev) => { const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, P = cv._P || []; let b = -1, bd = 18; P.forEach((a, i) => { const d = Math.hypot(a[0] - x, a[1] - y); if (d < bd && a[2] < 0.6) { bd = d; b = i; } }); return [b, x, y]; };
+    cv.addEventListener('pointerdown', (ev) => { arr = { x: ev.clientX, y: ev.clientY, yaw, pitch, mov: 0 }; cv.setPointerCapture(ev.pointerId); });
+    cv.addEventListener('pointermove', (ev) => {
+      if (arr) { const dx = ev.clientX - arr.x, dy = ev.clientY - arr.y; arr.mov = Math.max(arr.mov, Math.hypot(dx, dy)); yaw = arr.yaw + dx * 0.008; pitch = Math.max(-1.2, Math.min(1.2, arr.pitch + dy * 0.008)); auto = false; return; }
+      const [i, x, y] = cerca(ev); hover = i; marcar(i);
+      if (i >= 0) { const v = V[i]; tip.style.display = 'block'; tip.style.left = Math.min(x + 14, cv.clientWidth - 220) + 'px'; tip.style.top = (y + 10) + 'px'; tip.innerHTML = `<b>${esc(v.n)}</b><span style="color:${TIPOS[v.t].c}">${esc(TIPOS[v.t].n)} · ${v.rol === 'a' ? esc(e.n) + ' → ' + esc(v.n) : esc(v.n) + ' → ' + esc(e.n)}</span>${v.k ? '<small>Toca para ver su red</small>' : ''}`; } else tip.style.display = 'none';
+    });
+    cv.addEventListener('pointerleave', () => { hover = -1; tip.style.display = 'none'; marcar(-1); });
+    cv.addEventListener('pointerup', (ev) => { const fue = arr; arr = null; if (fue && fue.mov < 5) { const [i] = cerca(ev); if (i >= 0 && V[i].k) { cancelAnimationFrame(animRed); abrirRed(V[i].k); } } });
+    cancelAnimationFrame(animRed); animRed = requestAnimationFrame(cuadro);
   }
 
   /* ---------- bucle ---------- */  let ult = performance.now(), tUI = 0, tPot = 0;

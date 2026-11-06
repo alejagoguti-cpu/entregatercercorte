@@ -48,10 +48,14 @@ const CSS = `
 .gs-pan h3{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;font-size:10px;letter-spacing:.22em;color:#94a3b8;font-weight:700}
 .gs-pan h3 em{font-style:normal;color:#7dd3fc;letter-spacing:.06em}
 #gs-izq{left:14px;top:72px}#gs-der{right:14px;top:56px}
-.gs-reloj{display:flex;align-items:baseline;justify-content:space-between}
+.gs-reloj{display:flex;align-items:center;gap:12px}
+.gs-reloj>div{display:flex;flex-direction:column;gap:2px;min-width:0}
 .gs-reloj b{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
-.gs-reloj small{color:#7dd3fc;font-size:11px;font-weight:600;text-align:right}
-.gs-fila{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+.gs-reloj small{color:#7dd3fc;font-size:11px;font-weight:600}
+.gs-reloj em{font-style:normal;color:#64748b;font-size:9.5px;line-height:1.3}
+#gs-dial{flex:none;width:104px;height:104px;cursor:grab;touch-action:none;outline:none;border-radius:50%}
+#gs-dial:focus-visible{box-shadow:0 0 0 2px #7dd3fc}
+#gs-dial.arr{cursor:grabbing}.gs-fila{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
 .gs-fila3{grid-template-columns:repeat(3,1fr)}
 .gs-pan button{height:30px;border:none;border-radius:8px;background:rgba(255,255,255,.06);color:#cbd5e1;font:700 10px system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}
 .gs-pan button.on{background:#7dd3fc;color:#04121c}
@@ -193,8 +197,7 @@ export async function iniciarSimulacion(cfg = {}) {
   const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: true };
   const izq = document.createElement('div'); izq.className = 'gs-pan gs-act'; izq.id = 'gs-izq';
   izq.innerHTML = `<h3>SIMULACIÓN <em id="gs-dia">DÍA 1</em></h3>
-    <div class="gs-reloj"><b id="gs-hora">06:30</b><small id="gs-jor">Antes de la jornada</small></div>
-    <input type="range" id="gs-t" min="0" max="1439" step="1" aria-label="Hora del día (24 horas)">
+    <div class="gs-reloj"><svg id="gs-dial" viewBox="0 0 120 120" role="slider" tabindex="0" aria-label="Hora del día (24 horas): arrastra alrededor" aria-valuemin="0" aria-valuemax="1439"></svg><div><b id="gs-hora">06:30</b><small id="gs-jor">Antes de la jornada</small><em>Arrastra la bola alrededor: después de las 23:59 sigue la 00:00</em></div></div>
     <div class="gs-fila"><button id="gs-play">❚❚</button><button data-v="20">x20</button><button data-v="60" class="on">x60</button><button data-v="240">x240</button></div>
     <div class="gs-sub">SINTAXIS ESPACIAL <span>DepthmapX</span></div>
     <div class="gs-fila gs-fila3" id="gs-capa"><button data-c="i" class="on">Integración</button><button data-c="c">Elección</button><button data-c="">Apagar</button></div>
@@ -221,7 +224,28 @@ export async function iniciarSimulacion(cfg = {}) {
   tog.onclick = () => { const on = !document.body.classList.contains('gs-abierto'); document.body.classList.toggle('gs-abierto', on); tog.classList.toggle('on', on); if (!on) return; const vis = izq.classList.contains('gs-act'); izq.classList.toggle('gs-act', !vis); der.classList.toggle('gs-act', vis); tog.textContent = vis ? 'ACTORES' : 'SIMULACIÓN'; };
   if (matchMedia('(max-width:760px)').matches) { izq.classList.remove('gs-act'); der.classList.add('gs-act'); }
   if (M3) T3.reloj = st0; // el cielo de 24 horas (data3d/cielo.js) sigue esta hora
-  const tl = $('gs-t'); tl.value = st0.t; tl.oninput = () => { st0.t = +tl.value; };
+  // reloj circular de 24 horas (0:00 arriba, sentido horario): se arrastra la bola alrededor y la hora sigue sin cortes por la medianoche
+  const dial = $('gs-dial'), tl = dial;
+  {
+    const NS = 'http://www.w3.org/2000/svg', el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+    const col = (h) => h < 4.7 || h >= 19.3 ? '#16213f' : h < 5.6 ? '#6d4f8a' : h < 6.6 ? '#f59e5b' : h < 17.2 ? '#5cb8e6' : h < 18.1 ? '#f4a259' : '#c26b9a'; // noche, alba, amanecer, día, atardecer, anochecer
+    const pt = (r, a) => [60 + r * Math.sin(a), 60 - r * Math.cos(a)];
+    for (let i = 0; i < 96; i++) { const a0 = i / 96 * 6.2832, a1 = (i + 1.05) / 96 * 6.2832, [x0, y0] = pt(48, a0), [x1, y1] = pt(48, a1); dial.appendChild(el('path', { d: `M${x0.toFixed(2)} ${y0.toFixed(2)}A48 48 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`, stroke: col(i / 4), 'stroke-width': 9, fill: 'none' })); }
+    for (let h = 0; h < 24; h++) { const a = h / 24 * 6.2832, [x0, y0] = pt(38, a), [x1, y1] = pt(h % 6 ? 35.5 : 33, a); dial.appendChild(el('line', { x1: x0, y1: y0, x2: x1, y2: y1, stroke: h % 6 ? '#475569' : '#94a3b8', 'stroke-width': h % 6 ? 1 : 1.6 })); }
+    for (const h of [0, 6, 12, 18]) { const [x, y] = pt(25, h / 24 * 6.2832); const tx = el('text', { x, y: y + 3.2, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 700, fill: '#94a3b8', 'font-family': 'system-ui,sans-serif' }); tx.textContent = h; dial.appendChild(tx); }
+    dial.appendChild(el('circle', { cx: 60, cy: 60, r: 3, fill: '#7dd3fc' }));
+    const aguja = el('line', { x1: 60, y1: 60, x2: 60, y2: 16, stroke: '#7dd3fc', 'stroke-width': 1.6, 'stroke-linecap': 'round' }); dial.appendChild(aguja);
+    const bola = el('circle', { cx: 60, cy: 12, r: 7.5, fill: '#e0f2fe', stroke: '#0ea5e9', 'stroke-width': 2.5 }); dial.appendChild(bola);
+    dial.pintar = (T) => { const a = (T % 1440) / 1440 * 6.2832, [x, y] = pt(48, a), [ax, ay] = pt(40, a); bola.setAttribute('cx', x.toFixed(2)); bola.setAttribute('cy', y.toFixed(2)); aguja.setAttribute('x2', ax.toFixed(2)); aguja.setAttribute('y2', ay.toFixed(2)); dial.setAttribute('aria-valuenow', Math.floor(T)); dial.setAttribute('aria-valuetext', String(Math.floor(T / 60)).padStart(2, '0') + ':' + String(Math.floor(T % 60)).padStart(2, '0')); };
+    const fijar = (nuevo) => { nuevo = ((nuevo % 1440) + 1440) % 1440; const d = nuevo - st0.t; if (d < -720) st0.dia++; else if (d > 720 && st0.dia > 1) st0.dia--; st0.t = nuevo; dial.pintar(st0.t); }; // cruzar la medianoche cambia el día
+    const desdePuntero = (e) => { const r = dial.getBoundingClientRect(), x = e.clientX - (r.left + r.width / 2), y = e.clientY - (r.top + r.height / 2); let a = Math.atan2(x, -y); if (a < 0) a += 6.2832; fijar(Math.round(a / 6.2832 * 1440)); };
+    let arr = false;
+    dial.addEventListener('pointerdown', (e) => { arr = true; dial.classList.add('arr'); dial.setPointerCapture(e.pointerId); desdePuntero(e); e.preventDefault(); });
+    dial.addEventListener('pointermove', (e) => { if (arr) desdePuntero(e); });
+    const soltar = () => { arr = false; dial.classList.remove('arr'); }; dial.addEventListener('pointerup', soltar); dial.addEventListener('pointercancel', soltar);
+    dial.addEventListener('keydown', (e) => { const p = { ArrowRight: 15, ArrowUp: 15, ArrowLeft: -15, ArrowDown: -15, PageUp: 60, PageDown: -60 }[e.key]; if (p) { fijar(st0.t + p); e.preventDefault(); } });
+    dial.pintar(st0.t);
+  }
   $('gs-play').onclick = () => { st0.play = !st0.play; $('gs-play').textContent = st0.play ? '❚❚' : '▶'; };
   izq.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { st0.vel = +b.dataset.v; izq.querySelectorAll('[data-v]').forEach(x => x.classList.toggle('on', x === b)); });
   izq.querySelectorAll('#gs-capa button').forEach(b => b.onclick = () => { st0.capa = b.dataset.c; izq.querySelectorAll('#gs-capa button').forEach(x => x.classList.toggle('on', x === b)); vCache = -1; if (M3) capa3D(); });
@@ -632,7 +656,7 @@ export async function iniciarSimulacion(cfg = {}) {
       tPanel = 0.3;
       const T = st0.t, hh = Math.floor(T / 60), mm = Math.floor(T % 60);
       $('gs-hora').textContent = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); $('gs-dia').textContent = 'DÍA ' + st0.dia;
-      if (document.activeElement !== tl) tl.value = Math.floor(T);
+      dial.pintar(T);
       $('gs-jor').textContent = T < H(4, 45) ? 'Noche' : T < H(5, 40) ? 'Madrugada · alba' : T < H(7) ? 'Amanece · antes de las jornadas' : T < H(11, 30) ? 'Jornada diurna' : T < H(14) ? 'Almuerzo' : T < H(17, 30) ? 'Jornada después del almuerzo' : T < H(18, 30) ? 'Atardecer' : T < H(19, 15) ? 'Anochece' : 'Noche';
       for (const k of Object.keys(ACT)) { const e = $('gs-a-' + k); if (e) e.textContent = (k === 'hongo' ? (T > H(8) ? 600 : 0) : k === 'lombriz' ? Math.round(HUE.reduce((s, h) => s + h.lomb, 0)) : (act[k] || 0)).toLocaleString('es-CO'); }
       const f = (v, u, d = 0) => v.toLocaleString('es-CO', { maximumFractionDigits: d }) + (u ? ' ' + u : '');

@@ -926,14 +926,18 @@ async function crearMallaGoogle(T) {
   // la foto ya trae su luz y sus sombras: se muestra tal cual (emisiva), sin que el sol de la escena la aplaste ni la queme
   // máscara de huellas del modelo: donde hay un edificio propio se recorta lo que Google levanta (su versión "derretida") y queda solo su foto del suelo
   T.maskU = { uGrade: { value: REALISTA && !GOOGLE ? new THREE.Vector4(1.2, 0.9, 1.22, 1) : new THREE.Vector4(1, 1, 1, 0) }, uTint: { value: REALISTA && !GOOGLE ? new THREE.Vector3(1.04, 1.0, 0.93) : new THREE.Vector3(1, 1, 1) }, // saturación, contraste, brillo, quitar bruma · tinte
-    uMask: { value: null }, uOn: { value: 0 }, uLC: { value: new THREE.Vector2(LC.x, LC.y) }, uDim: { value: new THREE.Vector2(1 / MASK.XM, 1 / MASK.YM) }, uCut: { value: 2.5 },
+    uMask: { value: null }, uOn: { value: 0 }, uLC: { value: new THREE.Vector2(LC.x, LC.y) }, uDim: { value: new THREE.Vector2(1 / MASK.XM, 1 / MASK.YM) }, uCut: { value: 2.5 }, uEmpuje: { value: KEN ? 18 : 0 }, // Kennedy: la foto de Google va siempre DETRÁS de lo propio (ver project_vertex)
     uZona: { value: new THREE.Vector3(ZONA.x - LC.x, LC.y - ZONA.y, ZON ? (KEN ? Math.max(ZONA.r, 2400) : ZONA.r) : 1e9) } }; // Kennedy: el recorte llega también a Corabastos y Bavaria (en celular el radio de carga es menor) // fuera de la zona: malla de Google tal cual
   const recorte = (m) => {
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, T.maskU);
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vWPm;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWPm = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        .replace('#include <common>', '#include <common>\nuniform float uEmpuje;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWPm = (modelMatrix * vec4(transformed, 1.0)).xyz;')
+        // la malla de Google tiene relieve y errores de altura de varios metros: su profundidad se corre uEmpuje metros a lo largo del rayo de
+        // la cámara (la imagen no cambia: mismo punto en pantalla), así los edificios, carros, árboles y animales propios quedan siempre encima
+        .replace('#include <project_vertex>', '#include <project_vertex>\nif (uEmpuje > 0.0) { float dl = max(length(mvPosition.xyz), 1.0); vec4 pE = projectionMatrix * vec4(mvPosition.xyz * (1.0 + uEmpuje / dl), 1.0); gl_Position.z = min(pE.z / pE.w, 0.99999) * gl_Position.w; }');
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vWPm; uniform sampler2D uMask; uniform float uOn, uCut; uniform vec2 uLC, uDim; uniform vec4 uGrade; uniform vec3 uTint, uZona;')
         // gradación tipo render de maqueta (Umbra): quita la bruma gris de la foto aérea, sube saturación y contraste y la calienta un poco
@@ -1206,7 +1210,7 @@ async function initTodoReal() {
     { let ok; T3.pArboles = new Promise(r => ok = r); T3.arbolesOk = ok; }
     T3.esperaArboles = () => Promise.race([T3.pArboles, new Promise(r => setTimeout(r, 15000))]);
     { // suelo base neutro desde el primer cuadro (debajo de todo; la foto de Google lo cubre cuando llega)
-      const gb = new THREE.Mesh(new THREE.PlaneGeometry(16000, 12000), new THREE.MeshBasicMaterial({ color: 0x77746a }));
+      const gb = new THREE.Mesh(new THREE.PlaneGeometry(16000, 12000), new THREE.MeshBasicMaterial({ color: 0x77746a, depthWrite: false })); // sin profundidad: la foto de Google (corrida hacia atrás) siempre lo cubre
       gb.rotation.x = -Math.PI / 2; gb.position.y = -2.9; gb.renderOrder = -20; T3.sueloBase = gb; scene.add(gb);
     }
     if (REALISTA && !LIVIANO) { // SOMBRAS EN EL SUELO: la foto de Google no recibe sombras; una lámina invisible a ras del suelo (Kennedy es plano)
@@ -1721,7 +1725,7 @@ function buildChunks(THREE, B) {
       const muro = W.map((q, i) => { const r = W[(i + 1) % n], dx = r[0] - q[0], dz = r[1] - q[1], L = Math.hypot(dx, dz) || 1; return [dx / L, dz / L, L]; });
       const base = vc;
       for (let i = 0; i < n; i++) {
-        P.push(W[i][0], -3.0, W[i][1]); C.push(col.w[0] * 0.5, col.w[1] * 0.5, col.w[2] * 0.52); WL.push(muro[i][0], muro[i][1], muro[i][2], h); vc++; // base más oscura (oclusión ambiental falsa)
+        P.push(W[i][0], KEN ? -0.4 : -3.0, W[i][1]); C.push(col.w[0] * 0.5, col.w[1] * 0.5, col.w[2] * 0.52); WL.push(muro[i][0], muro[i][1], muro[i][2], h); vc++; // base más oscura (oclusión ambiental falsa)
       }
       for (let i = 0; i < n; i++) {
         P.push(W[i][0], h, W[i][1]); C.push(col.w[0], col.w[1], col.w[2]); WL.push(muro[i][0], muro[i][1], muro[i][2], h); vc++;
@@ -3054,9 +3058,9 @@ $('b-hd').onclick = async () => {
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
-  Promise.all([import('./data3d/giro_sim.js?v=11'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'] }))
+  Promise.all([import('./data3d/giro_sim.js?v=12'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'] }))
     .then(() => import('./data3d/cielo.js?v=3')).then(m => { T3.cielo = m.iniciarCielo({ THREE: T3.THREE, T3, luzMalla }); }) // cielo y luz de 24 horas con el reloj de la simulación
-    .then(() => import('./data3d/biotica.js?v=4')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL }))
+    .then(() => import('./data3d/biotica.js?v=5')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL }))
     .catch(e => console.warn('simulación Kennedy:', e));
 } else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({
