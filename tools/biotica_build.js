@@ -18,7 +18,9 @@ const FAUNA = {
   curi: 'Cavia aperea', comadreja: 'Neogale frenata affinis', rata: 'Rattus norvegicus', rana: 'Rana sabanera',
   culebra: 'Atractus crassicaudatus', lagartija: 'Anadia bogotensis', caracol: 'Cornu aspersum'
 };
-const fix = (s) => { try { return /Ã|Â/.test(s) ? Buffer.from(s, 'latin1').toString('utf8') : s; } catch (e) { return s; } };
+// la página trae algunas tildes dañadas (carácter de reemplazo U+FFFD): se reponen palabra por palabra
+const TILDES = { 'Mam�feros': 'Mamíferos', 'Gaster�podos': 'Gasterópodos', 'mel�fera': 'melífera', 'n�ctar': 'néctar', 'diseminaci�n': 'diseminación', 'zo�cora': 'zoócora', 'fit�fago': 'fitófago', 'r�dula': 'rádula', 'pl�ntulas': 'plántulas', 'Urap�n': 'Urapán', 'Depredaci�n': 'Depredación', 'carn�vora': 'carnívora', 'regulaci�n': 'regulación', 'acu�ticos': 'acuáticos', 'subterr�neas': 'subterráneas' };
+const fix = (s) => { try { s = /Ã|Â/.test(s) ? Buffer.from(s, 'latin1').toString('utf8') : s; } catch (e) {} return String(s).replace(/[A-Za-zÁÉÍÓÚáéíóúñ]*�[A-Za-zÁÉÍÓÚáéíóúñ]*/g, w => TILDES[w] || w.replace(/�/g, '')); };
 
 function bajar() {
   return new Promise((ok, mal) => https.get(URL, { headers: { 'User-Agent': 'ren3d-kennedy' } }, r => { let b = ''; r.setEncoding('utf8'); r.on('data', d => b += d); r.on('end', () => ok(b)); }).on('error', mal));

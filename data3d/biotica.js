@@ -71,7 +71,7 @@ const R_RED = 220, R_RAPAZ = 420, R_ARBOL = 90, CERCA = 18;
 
 export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = false }) {
   const [{ LineSegments2 }, { LineSegmentsGeometry }, { LineMaterial }] = await Promise.all([import('three/addons/lines/LineSegments2.js'), import('three/addons/lines/LineSegmentsGeometry.js'), import('three/addons/lines/LineMaterial.js')]);
-  const [D, B, TR, PQ] = await Promise.all(['data3d/giro_sim.json', 'data3d/biotica.json', 'data3d/trees.json', 'data3d/parques.json'].map(u => fetch(u).then(r => r.json())));
+  const [D, B, TR, PQ] = await Promise.all(['data3d/giro_sim.json', 'data3d/biotica.json?v=2', 'data3d/trees.json', 'data3d/parques.json'].map(u => fetch(u).then(r => r.json())));
   const rnd = Math.random, gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283 * v); };
   const TIPOS = B.tipos, COLT = TIPOS.map(t => new THREE.Color(t.c));
   const GY = Y0; // suelo y lámina de agua en el marco de la maqueta (el mismo de las personas de la simulación)
