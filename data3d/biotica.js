@@ -59,11 +59,14 @@ const ESP = {
   caracol: { n: 'Caracol de jardín', mov: 'caracol', cant: 10, v: 0.004, cuerpo: 'caracol' }
 };
 const POR_HUMEDAL = { 'Humedal El Burro': 1, 'Humedal La Vaca': 0.6, 'Humedal de Techo': 0.45 };
-// radio de encuentro por tipo de interacción (m, en el mundo de la maqueta)
-const R_FAUNA = { 0: 45, 3: 30, 7: 35 };
+// zonas verdes (parques de data3d/parques.json): individuos por parque de tamaño medio (las especies de agua solo van en los humedales)
+const POR_PARQUE = { copeton: 3, mirla: 1.6, torcaza: 2.2, colibri: 1, chamon: 0.6, cucarachero: 1, rata: 0.8, lagartija: 0.8, caracol: 1.4, culebra: 0.25, curi: 0.3, comadreja: 0.12, cernicalo: 0.05, buho: 0.04 };
+// conexiones: con quién se une cada animal (individuo más cercano de cada especie relacionada en la red, y árbol relacionado)
+const R_RED = 220, R_RAPAZ = 420, R_ARBOL = 90, CERCA = 18;
 
 export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = false }) {
-  const [D, B, TR] = await Promise.all(['data3d/giro_sim.json', 'data3d/biotica.json', 'data3d/trees.json'].map(u => fetch(u).then(r => r.json())));
+  const [{ LineSegments2 }, { LineSegmentsGeometry }, { LineMaterial }] = await Promise.all([import('three/addons/lines/LineSegments2.js'), import('three/addons/lines/LineSegmentsGeometry.js'), import('three/addons/lines/LineMaterial.js')]);
+  const [D, B, TR, PQ] = await Promise.all(['data3d/giro_sim.json', 'data3d/biotica.json', 'data3d/trees.json', 'data3d/parques.json'].map(u => fetch(u).then(r => r.json())));
   const rnd = Math.random, gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283 * v); };
   const TIPOS = B.tipos, COLT = TIPOS.map(t => new THREE.Color(t.c));
   const GY = Y0; // suelo y lámina de agua en el marco de la maqueta (el mismo de las personas de la simulación)
@@ -84,17 +87,25 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   const HUM = D.humedales.map(h => {
     const poly = h.poly.map(p => [p[0] + OX, p[1] + OZ]), borde = (h.borde || h.poly).map(p => [p[0] + OX, p[1] + OZ]);
     let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of poly) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
-    return { n: h.n, poly, borde, x0, x1, z0, z1, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, arb: [], grid: new Map(), k: POR_HUMEDAL[h.n] || 0.4 };
+    return { n: h.n, tipo: 'humedal', poly, borde, x0, x1, z0, z1, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, ag: {}, k: POR_HUMEDAL[h.n] || 0.4 };
   });
-  const M = 220, CEL = 20, gk = (x, z) => Math.floor(x / CEL) + ',' + Math.floor(z / CEL);
+  // zonas verdes: los parques más grandes alrededor de los humedales (hasta ~2,4 km de El Burro)
+  const PAR = PQ.map(p => {
+    const poly = p.pts.map(q => lw(q[0], q[1])); let a = 0, x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (let i = 0; i < poly.length; i++) { const q = poly[i], r = poly[(i + 1) % poly.length]; a += q[0] * r[1] - r[0] * q[1]; x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]); }
+    const borde = poly[0][0] === poly[poly.length - 1][0] && poly[0][1] === poly[poly.length - 1][1] ? poly : poly.concat([poly[0]]);
+    return { n: p.nombre ? 'Parque ' + p.nombre.replace(/^parque\s+/i, '') : 'Zona verde', tipo: 'parque', poly, borde, x0, x1, z0, z1, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, area: Math.abs(a) / 2, ag: {} };
+  }).filter(p => p.area > 2500 && Math.hypot(p.cx - OX, p.cz - OZ) < 2400).sort((p, q) => q.area - p.area).slice(0, movil ? 30 : 55);
+  for (const p of PAR) p.k = Math.max(0.35, Math.min(2.2, Math.sqrt(p.area) / 110));
+  const HAB = HUM.concat(PAR);
+  // árboles reales (censo SIGAU) en toda la zona, en un índice espacial único
+  const CEL = 20, GRID = new Map(), gk = (i, j) => i * 100003 + j;
   for (const t of TR.t) {
-    const [x, z] = lw(t[0], t[1]);
-    for (const h of HUM) if (x > h.x0 - M && x < h.x1 + M && z > h.z0 - M && z < h.z1 + M) {
-      const a = { x, z, h: Math.max(2.5, t[2]), y: GY + Math.max(2.5, t[2]) * 0.82, sp: t[3], fl: FLORA_SP.get(t[3]) || [], n: TR.sp[t[3]] };
-      h.arb.push(a); const g = gk(x, z); if (!h.grid.has(g)) h.grid.set(g, []); h.grid.get(g).push(a); break;
-    }
+    const [x, z] = lw(t[0], t[1]); if (Math.hypot(x - OX, z - OZ) > 2700) continue;
+    const a = { x, z, h: Math.max(2.5, t[2]), y: GY + Math.max(2.5, t[2]) * 0.82, sp: t[3], fl: FLORA_SP.get(t[3]) || [], n: TR.sp[t[3]] };
+    const g = gk(Math.floor(x / CEL), Math.floor(z / CEL)); if (!GRID.has(g)) GRID.set(g, []); GRID.get(g).push(a);
   }
-  const arbolesCerca = (h, x, z, r) => { const L = [], c0 = Math.floor((x - r) / CEL), c1 = Math.floor((x + r) / CEL), r0 = Math.floor((z - r) / CEL), r1 = Math.floor((z + r) / CEL); for (let i = c0; i <= c1; i++) for (let j = r0; j <= r1; j++) { const g = h.grid.get(i + ',' + j); if (g) for (const a of g) if (Math.hypot(a.x - x, a.z - z) < r) L.push(a); } return L; };
+  const arbolesCerca = (h, x, z, r) => { const L = [], c0 = Math.floor((x - r) / CEL), c1 = Math.floor((x + r) / CEL), r0 = Math.floor((z - r) / CEL), r1 = Math.floor((z + r) / CEL); for (let i = c0; i <= c1; i++) for (let j = r0; j <= r1; j++) { const g = GRID.get(gk(i, j)); if (g) for (const a of g) if (Math.hypot(a.x - x, a.z - z) < r) L.push(a); } return L; };
   const puntoEn = (h) => { for (let k = 0; k < 200; k++) { const x = h.x0 + rnd() * (h.x1 - h.x0), z = h.z0 + rnd() * (h.z1 - h.z0); if (dentro(x, z, h.poly)) return [x, z]; } return [h.cx, h.cz]; };
   const puntoBorde = (h, off = 0) => { const b = h.borde, i = Math.floor(rnd() * (b.length - 1)), f = rnd(), p = [b[i][0] + (b[i + 1][0] - b[i][0]) * f, b[i][1] + (b[i + 1][1] - b[i][1]) * f]; return off ? [p[0] + gauss() * off, p[1] + gauss() * off] : p; };
   const bordeCercano = (h, x, z) => { let best = null, bd = 1e18; const b = h.borde; for (let i = 0; i < b.length - 1; i++) { const ax = b[i][0], az = b[i][1], dx = b[i + 1][0] - ax, dz = b[i + 1][1] - az, l = dx * dx + dz * dz || 1, f = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l)), px = ax + dx * f, pz = az + dz * f, d = (px - x) ** 2 + (pz - z) ** 2; if (d < bd) { bd = d; best = [px, pz]; } } return [best, Math.sqrt(bd)]; };
@@ -153,26 +164,34 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   }
   const largo = (k) => { const e = ESP[k]; if (e.ave) return e.ave.len * 1.4 + (e.ave.alto || 0); return { curi: 0.25, comadreja: 0.45, rata: 0.4, rana: 0.05, culebra: 0.45, lagartija: 0.17, caracol: 0.04 }[e.cuerpo]; };
   // escala de maqueta: los animales se agrandan para verse desde la vista general (los pequeños más), sin pasar de ~1,2 m
-  const escala = (k) => Math.min(14, Math.max(2.4, 1.1 / largo(k)));
+  const escala = (k) => Math.min(16, Math.max(3.2, 1.4 / largo(k)));
 
   /* ---------- agentes ---------- */
   const AG = [], POR = {}; let id = 0;
-  const nPor = (k, h) => Math.max(ESP[k].mov === 'rapaz' ? (h.k >= 1 ? 1 : 0) : 1, Math.round(ESP[k].cant * h.k * (movil ? 0.5 : 1)));
-  for (const h of HUM) for (const k of Object.keys(ESP)) {
-    const e = ESP[k]; if (!POR[k]) POR[k] = [];
+  const redondeo = (v) => Math.floor(v) + (rnd() < v % 1 ? 1 : 0); // reparto sin sesgo de fracciones
+  const nPor = (k, h) => h.tipo === 'parque' ? redondeo((POR_PARQUE[k] || 0) * h.k * (movil ? 0.45 : 1))
+    : Math.max(ESP[k].mov === 'rapaz' ? (h.k >= 1 ? 1 : 0) : 1, Math.round(ESP[k].cant * h.k * (movil ? 0.5 : 1)));
+  for (const h of HAB) for (const k of Object.keys(ESP)) {
+    const e = ESP[k]; if (!POR[k]) POR[k] = []; if (!h.ag[k]) h.ag[k] = [];
+    const parque = h.tipo === 'parque';
     for (let i = 0; i < nPor(k, h); i++) {
       let p, y = GY;
       if (e.mov === 'nada' || e.mov === 'vadea') p = puntoEn(h);
+      else if (parque && (e.mov === 'suelo' || e.mov === 'caracol')) p = puntoEn(h);
       else if (e.mov === 'orilla' || e.mov === 'rana' || e.mov === 'caracol') p = puntoBorde(h, e.mov === 'orilla' ? 6 : 3);
       else if (e.mov === 'suelo') p = puntoBorde(h, 25);
       else if (e.mov === 'rapaz') { p = [h.cx + gauss() * 60, h.cz + gauss() * 60]; y = GY + e.alt[0] + rnd() * (e.alt[1] - e.alt[0]); }
-      else { const a = h.arb.length ? h.arb[Math.floor(rnd() * h.arb.length)] : null; p = a ? [a.x, a.z] : puntoEn(h); y = a ? a.y : GY; }
+      else { const L = arbolesCerca(h, h.cx, h.cz, Math.max(60, Math.hypot(h.x1 - h.x0, h.z1 - h.z0) / 2)), a = L.length ? L[Math.floor(rnd() * L.length)] : null; p = a ? [a.x, a.z] : puntoEn(h); y = a ? a.y : GY; }
       const a = { id: id++, e: k, h, x: p[0], y, z: p[1], rot: rnd() * 6.28, pitch: 0, st: 'quieto', t: rnd() * 6, vis: true, flap: rnd() * 6.28, vel: 0, links: [], hx: p[0], hz: p[1], ang: rnd() * 6.28, ev: 0 };
       if (e.mov === 'rapaz') Object.assign(a, { st: 'planea', cx: a.x, cz: a.z, rad: 60 + rnd() * 60, alt: a.y - GY, w: (rnd() < 0.5 ? 1 : -1) * e.v / 90 });
       if (e.mov === 'vuela' || e.mov === 'colibri') a.st = 'posado';
-      AG.push(a); POR[k].push(a);
+      AG.push(a); POR[k].push(a); h.ag[k].push(a);
     }
   }
+  // índice espacial de los animales por especie (celdas de 100 m), para unir cada uno con el más cercano de cada especie relacionada
+  const CA = 100; let GA = new Map();
+  const indexar = () => { GA = new Map(); for (const a of AG) { if (!a.vis) continue; const g = a.e + ':' + gk(Math.floor(a.x / CA), Math.floor(a.z / CA)); let L = GA.get(g); if (!L) GA.set(g, L = []); L.push(a); } };
+  const masCercano = (k, x, z, R, no) => { let best = null, bd = R; const c0 = Math.floor((x - R) / CA), c1 = Math.floor((x + R) / CA), r0 = Math.floor((z - R) / CA), r1 = Math.floor((z + R) / CA); for (let i = c0; i <= c1; i++) for (let j = r0; j <= r1; j++) { const L = GA.get(k + ':' + gk(i, j)); if (L) for (const b of L) { if (b === no) continue; const d = Math.hypot(b.x - x, b.z - z); if (d < bd) { bd = d; best = b; } } } return best ? [best, bd] : null; };
 
   /* ---------- mallas instanciadas (cuerpo y alas) ---------- */
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0, side: THREE.DoubleSide });
@@ -189,17 +208,17 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   /* ---------- movimiento ---------- */
   const girarA = (a, dx, dz, dt, max = 4) => { if (dx * dx + dz * dz < 1e-8) return; const obj = Math.atan2(-dz, dx); let d = ((obj - a.rot + Math.PI * 3) % (Math.PI * 2)) - Math.PI; d = Math.max(-max * dt, Math.min(max * dt, d)); a.rot += d; };
   const alPunto = (a, x, z, v, dt) => { const dx = x - a.x, dz = z - a.z, d = Math.hypot(dx, dz); if (d < 1e-3) return true; const s = Math.min(d, v * dt); a.x += dx / d * s; a.z += dz / d * s; girarA(a, dx, dz, dt, 6); a.vel = v; return d <= v * dt + 0.05; };
-  const vuelo = (a, x1, y1, z1, v, arco) => { const d = Math.hypot(x1 - a.x, z1 - a.z); a.st = 'vuelo'; a.f = { x0: a.x, y0: a.y, z0: a.z, x1, y1, z1, d: Math.max(1, d), s: 0, v, arco: arco ?? Math.min(18, 3 + d * 0.12), off: gauss() * 0.4 }; };
+  const vuelo = (a, x1, y1, z1, v, arco) => { y1 = Math.max(GY, y1); const d = Math.hypot(x1 - a.x, z1 - a.z); a.st = 'vuelo'; a.f = { x0: a.x, y0: a.y, z0: a.z, x1, y1, z1, d: Math.max(1, d), s: 0, v, arco: arco ?? Math.min(18, 3 + d * 0.12), off: gauss() * 0.4 }; };
   const alcanzables = (a, R) => { const h = a.h, L = []; for (const t of arbolesCerca(h, a.x, a.z, R)) if (t.fl.some(f => REL[a.e].flora.has(f))) L.push(t); return L; };
   const huir = (a, de, t = 4) => { a.huye = { x: de.x, z: de.z, t }; };
   function elegirPercha(a) {
     const e = ESP[a.e], h = a.h;
     const cercaDe = (r, enAgua) => { for (let k = 0; k < 30; k++) { const x = a.x + gauss() * r, z = a.z + gauss() * r; if (dentro(x, z, h.poly) === enAgua) return [x, z]; } return enAgua ? puntoEn(h) : bordeCercano(h, a.x, a.z)[0]; };
     if (e.junco && rnd() < e.junco) { const p = cercaDe(35, true); return [p[0], GY + 1.4, p[1], null]; } // juncal cercano (monjita)
-    if (e.suelo && rnd() < e.suelo) { const p = cercaDe(25, false); return [p[0], GY, p[1], null]; } // forrajeo en el pasto, cerca
+    if (e.suelo && rnd() < e.suelo) { const p = cercaDe(25, h.tipo === 'parque'); return [p[0], GY, p[1], null]; } // forrajeo en el pasto, cerca (en el parque: dentro)
     // atracción por la red: árbol de una especie con la que tiene relación (polinización, dispersión, nidificación…)
     let L = alcanzables(a, 140); if (!L.length || rnd() < 0.2) L = arbolesCerca(h, a.x, a.z, 90);
-    if (!L.length) L = h.arb; if (!L.length) { const p = puntoEn(h); return [p[0], GY, p[1], null]; }
+    if (!L.length) L = arbolesCerca(h, a.x, a.z, 250); if (!L.length) { const p = puntoEn(h); return [p[0], GY, p[1], null]; }
     const t = L[Math.floor(rnd() * L.length)]; return [t.x + gauss() * 1.2, t.y + gauss() * 0.4, t.z + gauss() * 1.2, t];
   }
   function moverAve(a, dt) { // vuelo de posado a posado; bandada al despegar
@@ -208,13 +227,13 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
       a.vel = 0; if (a.huye) { a.t = 0; }
       if ((a.t -= dt) > 0) { if (rnd() < dt * 0.3) a.rot += gauss() * 0.8; return; }
       const [x, y, z, t] = elegirPercha(a); a.arb = t; vuelo(a, x, y, z, e.v * (0.85 + rnd() * 0.3));
-      for (const b of POR[a.e]) if (b !== a && b.st === 'posado' && b.h === a.h && Math.hypot(b.x - a.x, b.z - a.z) < 22 && rnd() < 0.65) { b.arb = t; b.t = 0; const o = 3 + rnd() * 3; vuelo(b, x + gauss() * o, y + gauss() * 0.5, z + gauss() * o, a.f.v * (0.9 + rnd() * 0.2)); b.f.retraso = rnd() * 0.8; }
+      for (const b of a.h.ag[a.e]) if (b !== a && b.st === 'posado' && Math.hypot(b.x - a.x, b.z - a.z) < 22 && rnd() < 0.65) { b.arb = t; b.t = 0; const o = 3 + rnd() * 3; vuelo(b, x + gauss() * o, y + gauss() * 0.5, z + gauss() * o, a.f.v * (0.9 + rnd() * 0.2)); b.f.retraso = rnd() * 0.8; }
       return;
     }
     const f = a.f; if (f.retraso > 0) { f.retraso -= dt; return; }
     f.s += f.v * dt; const u = Math.min(1, f.s / f.d), px = a.x, pz = a.z;
     a.x = f.x0 + (f.x1 - f.x0) * u; a.z = f.z0 + (f.z1 - f.z0) * u; a.y = f.y0 + (f.y1 - f.y0) * u + Math.sin(Math.PI * u) * f.arco;
-    for (const b of POR[a.e]) if (b !== a && b.st === 'vuelo') { const dx = a.x - b.x, dz = a.z - b.z, d = Math.hypot(dx, dz); if (d < 1.6 && d > 1e-3) { a.x += dx / d * (1.6 - d) * 0.5; a.z += dz / d * (1.6 - d) * 0.5; } } // zona de repulsión
+    for (const b of a.h.ag[a.e]) if (b !== a && b.st === 'vuelo') { const dx = a.x - b.x, dz = a.z - b.z, d = Math.hypot(dx, dz); if (d < 1.6 && d > 1e-3) { a.x += dx / d * (1.6 - d) * 0.5; a.z += dz / d * (1.6 - d) * 0.5; } } // zona de repulsión
     girarA(a, a.x - px, a.z - pz, dt, 8); a.vel = f.v; a.pitch = Math.cos(Math.PI * u) * Math.min(0.5, f.arco / f.d * 2);
     if (u >= 1) { a.st = 'posado'; a.pitch = 0; const r = e.posa || [12, 40]; a.t = r[0] + rnd() * (r[1] - r[0]); }
   }
@@ -236,7 +255,7 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
     if (a.st === 'buceo') { a.vis = false; if ((a.t -= dt) <= 0) { a.st = 'quieto'; a.vis = true; a.t = 10 + rnd() * 30; } return; }
     if (e.bucea && !a.huye && rnd() < dt * 0.012) { a.st = 'buceo'; a.t = 6 + rnd() * 10; return; }
     let rx = 0, rz = 0, ox = 0, oz = 0, cx = 0, cz = 0, n = 0;
-    for (const b of POR[a.e]) { if (b === a || !b.vis || b.h !== a.h) continue; const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz); if (d < 1.4 && d > 1e-3) { rx -= dx / d; rz -= dz / d; } else if (d < 9) { ox += Math.cos(b.rot); oz -= Math.sin(b.rot); } else if (d < 30) { cx += dx / d; cz += dz / d; n++; } }
+    for (const b of a.h.ag[a.e]) { if (b === a || !b.vis) continue; const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz); if (d < 1.4 && d > 1e-3) { rx -= dx / d; rz -= dz / d; } else if (d < 9) { ox += Math.cos(b.rot); oz -= Math.sin(b.rot); } else if (d < 30) { cx += dx / d; cz += dz / d; n++; } }
     let vx, vz; a.ang += gauss() * 0.4 * dt; vx = Math.cos(a.ang) * 0.6; vz = Math.sin(a.ang) * 0.6;
     if (rx || rz) { vx += rx * 2; vz += rz * 2; } else { vx += ox * 0.25 + cx * 0.5; vz += oz * 0.25 + cz * 0.5; }
     let v = e.v; if (a.huye) { vx += (a.x - a.huye.x) * 0.2; vz += (a.z - a.huye.z) * 0.2; v *= 4; }
@@ -300,81 +319,115 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   }
   const MOV = { vuela: moverAve, colibri: moverColibri, nada: moverNada, orilla: moverOrilla, vadea: moverVadea, rapaz: moverRapaz, suelo: moverSuelo, rana: moverRana, caracol: (a, dt) => { a.ang += gauss() * 0.2 * dt; a.x += Math.cos(a.ang) * 0.004 * dt; a.z += Math.sin(a.ang) * 0.004 * dt; a.rot = Math.atan2(-Math.sin(a.ang), Math.cos(a.ang)); a.y = GY; } };
 
-  /* ---------- red realizada: encuentros ---------- */
-  const LINKS = new Map(); // clave -> { a, b (agente) | arbol, t, al (alfa), vivo, r }
+  /* ---------- red de conexiones entre agentes ----------
+     Cada animal se une, según la red, con el individuo más cercano de cada especie con la que tiene relación (hasta 220 m;
+     rapaces 420 m) y con el árbol más cercano de cada especie de flora relacionada (hasta 90 m). Cuando están cerca
+     (encuentro: ≤ 18 m, o posado en ese árbol) la interacción ocurre: la línea se ve fuerte y lleva un pulso, y hay conducta
+     (persecución y huida en la depredación, el chamón sigue al hospedero). Las líneas se mueven con los animales. */
+  const LINKS = new Map(); // clave -> { a, b (agente) | arbol, t, al (alfa), vivo, r, f }
   const ESTADO = { on: true, tipos: new Set(TIPOS.map(t => t.id)), sel: null };
-  function encuentros(a) {
-    const e = ESP[a.e], R = REL[a.e], vistos = [];
-    // flora: el árbol donde está posado, libando, perchado o al que se acerca (≤ 14 m)
-    if (R.flora.size && a.vis) {
-      let best = null, bd = 1e9;
-      const cand = a.arb && Math.hypot(a.arb.x - a.x, a.arb.z - a.z) < 4 ? [a.arb] : arbolesCerca(a.h, a.x, a.z, e.mov === 'vuela' || e.mov === 'colibri' ? 6 : 14);
-      for (const t of cand) for (const f of t.fl) { const r = R.flora.get(f); if (!r) continue; const d = Math.hypot(t.x - a.x, t.z - a.z); if (d < bd) { bd = d; best = { b: t, t: r.t, f, r: r.r }; } }
-      if (best) vistos.push(best);
+  function conexiones(a) {
+    const e = ESP[a.e], R = REL[a.e], L = [];
+    if (!a.vis) return L;
+    // flora: el árbol donde está (encuentro) y el más cercano de cada especie relacionada
+    if (R.flora.size) {
+      const mejor = new Map(); // especie de flora relacionada -> árbol más cercano (una sola pasada, sin ordenar)
+      const ver = (t, d) => { for (const f of t.fl) { const r = R.flora.get(f); if (!r) continue; const m = mejor.get(f); if (!m || d < m.d) mejor.set(f, { b: t, t: r.t, f, r: r.r, d }); } };
+      if (a.arb && Math.hypot(a.arb.x - a.x, a.arb.z - a.z) < 4) ver(a.arb, 0);
+      for (const t of arbolesCerca(a.h, a.x, a.z, R_ARBOL)) if (t.fl.length) ver(t, Math.hypot(t.x - a.x, t.z - a.z));
+      const F = [...mejor.values()].sort((p, q) => p.d - q.d); for (let i = 0; i < Math.min(2, F.length); i++) L.push(F[i]);
     }
-    // fauna: el individuo más cercano de cada especie con la que tiene relación (como actor)
+    // fauna: el individuo más cercano de cada especie relacionada (como actor; la otra especie dibuja su lado)
     for (const r of R.fauna) {
-      if (r.rol !== 'a') continue; const Rr = (R_FAUNA[r.t] || 30) * (e.mov === 'rapaz' ? 1.6 : 1);
-      let best = null, bd = Rr; for (const b of POR[r.o] || []) { if (!b.vis || b.h !== a.h) continue; const d = Math.hypot(b.x - a.x, b.z - a.z); if (d < bd) { bd = d; best = b; } }
-      if (!best) continue; vistos.push({ b: best, t: r.t, r: r.r });
+      if (r.rol !== 'a') continue;
+      const m = masCercano(r.o, a.x, a.z, e.mov === 'rapaz' ? R_RAPAZ : R_RED, a); if (!m) continue;
+      const [b, d] = m; L.push({ b, t: r.t, r: r.r, d });
       if (r.t === 0) { // depredación: persecución y huida
-        if (e.mov === 'rapaz' && a.st === 'planea' && (a.cool || 0) <= 0 && rnd() < 0.35) { a.st = 'picada'; a.presa = best; a.t = 6; }
-        if (e.caza && !a.caza && bd < 22) a.caza = best;
-        if (bd < 25 || a.presa === best) huir(best, a);
+        if (e.mov === 'rapaz' && a.st === 'planea' && (a.cool || 0) <= 0 && d < 90 && rnd() < 0.3) { a.st = 'picada'; a.presa = b; a.t = 6; }
+        if (e.caza && !a.caza && d < 22) a.caza = b;
+        if (d < 25 || a.presa === b) huir(b, a);
       }
-      if (r.t === 7 && e.mov === 'vuela' && best.arb && a.st === 'posado' && rnd() < 0.2) { a.t = 0; } // el chamón sigue al nido del hospedero
+      if (r.t === 7 && e.mov === 'vuela' && a.st === 'posado' && d < 40 && rnd() < 0.15) a.t = 0; // el chamón sigue al hospedero
     }
-    return vistos.slice(0, 3);
+    L.sort((p, q) => p.d - q.d); return L.slice(0, 5);
   }
-  let iEnc = 0;
+  let iEnc = 0, tIdx = 0;
   function actualizarRed(dt) {
-    const n = Math.max(1, Math.ceil(AG.length / 12)); // cada agente revisa sus encuentros ~5 veces por segundo
+    if ((tIdx -= dt) <= 0) { tIdx = 0.4; indexar(); }
+    const n = Math.max(1, Math.ceil(AG.length / 40)); // cada agente rehace sus conexiones ~1,5 veces por segundo
     for (let k = 0; k < n; k++) {
-      const a = AG[iEnc++ % AG.length], vistos = encuentros(a), claves = new Set();
-      for (const v of vistos) { const kb = v.b.id !== undefined ? 'a' + v.b.id : 'f' + v.b.x.toFixed(1) + v.b.z.toFixed(1); const key = a.id + '|' + kb; claves.add(key); const L = LINKS.get(key); if (L) { L.vivo = 1.2; } else { LINKS.set(key, { a, b: v.b, t: v.t, al: 0, vivo: 1.2, r: v.r, f: v.f, desde: performance.now() }); } }
-      a.links = [...claves];
+      const a = AG[iEnc++ % AG.length], claves = [];
+      for (const v of conexiones(a)) {
+        const kb = v.b.id !== undefined ? 'a' + v.b.id : 'f' + v.b.x.toFixed(1) + v.b.z.toFixed(1), key = a.id + '|' + kb; claves.push(key);
+        const L = LINKS.get(key); if (L) L.vivo = 1.6; else LINKS.set(key, { a, b: v.b, t: v.t, al: 0, vivo: 1.6, r: v.r, f: v.f });
+      }
+      a.links = claves;
     }
-    for (const [k, L] of LINKS) { L.vivo -= dt; const meta = L.vivo > 0 && L.a.vis && (L.b.vis !== false) ? 1 : 0; L.al += (meta - L.al) * Math.min(1, dt * 4); if (L.vivo < -0.6 && L.al < 0.02) LINKS.delete(k); }
+    for (const [k, L] of LINKS) { L.vivo -= dt; const meta = L.vivo > 0 && L.a.vis && (L.b.vis !== false) ? 1 : 0; L.al += (meta - L.al) * Math.min(1, dt * 3); if (L.vivo < -0.8 && L.al < 0.02) LINKS.delete(k); }
   }
 
-  /* ---------- líneas en arco + pulsos que viajan del actor al objetivo ---------- */
-  const SEG = 14, MAXL = movil ? 220 : 520;
-  const lp = new Float32Array(MAXL * SEG * 2 * 3), lc = new Float32Array(MAXL * SEG * 2 * 4);
-  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3).setUsage(THREE.DynamicDrawUsage)); lg.setAttribute('color', new THREE.BufferAttribute(lc, 4).setUsage(THREE.DynamicDrawUsage));
-  const lineas = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, fog: false }));
-  lineas.frustumCulled = false; lineas.renderOrder = 8; grupo.add(lineas);
-  const pp = new Float32Array(MAXL * 2 * 3), pc = new Float32Array(MAXL * 2 * 4);
+  /* ---------- líneas en arco con grosor real (LineSegments2) + pulsos (del actor al objetivo) + marca de cada animal ---------- */
+  const SEG = 10, MAXL = movil ? 800 : 2600;
+  const capa = (ancho, opac) => { // segmentos gruesos en píxeles; se escriben en los búferes una vez por cuadro
+    const g = new LineSegmentsGeometry(); g.setPositions(new Float32Array(MAXL * SEG * 6)); g.setColors(new Float32Array(MAXL * SEG * 6));
+    const m = new LineMaterial({ vertexColors: true, linewidth: ancho, transparent: true, opacity: opac, depthWrite: false, fog: false, worldUnits: false });
+    const o = new LineSegments2(g, m); o.frustumCulled = false; o.renderOrder = 8; grupo.add(o);
+    return { g, m, o, p: g.attributes.instanceStart.data, c: g.attributes.instanceColorStart.data, n: 0 };
+  };
+  const FUERTE = capa(movil ? 2.6 : 3.4, 0.95), TENUE = capa(movil ? 1.6 : 2.2, 0.7);
+  const resol = () => { const v = new THREE.Vector2(); T3.renderer.getSize ? T3.renderer.getSize(v) : v.set(innerWidth, innerHeight); FUERTE.m.resolution.copy(v); TENUE.m.resolution.copy(v); };
+  resol(); addEventListener('resize', resol);
+  const disco = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.beginPath(); g.arc(32, 32, 26, 0, 6.283); g.fill(); g.lineWidth = 6; g.strokeStyle = 'rgba(8,16,26,.85)'; g.stroke(); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const pp = new Float32Array(MAXL * 3), pc = new Float32Array(MAXL * 4);
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pp, 3).setUsage(THREE.DynamicDrawUsage)); pg.setAttribute('color', new THREE.BufferAttribute(pc, 4).setUsage(THREE.DynamicDrawUsage));
-  const pulsos = new THREE.Points(pg, new THREE.PointsMaterial({ size: movil ? 5 : 6, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
+  const pulsos = new THREE.Points(pg, new THREE.PointsMaterial({ size: movil ? 6 : 8, map: disco, alphaTest: 0.3, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
   pulsos.frustumCulled = false; pulsos.renderOrder = 9; grupo.add(pulsos);
-  const ancla = (o, out) => { if (o.id !== undefined) { const s = MAL[o.e].s, e = ESP[o.e]; out[0] = o.x; out[1] = o.y + (e.ave ? (e.ave.alto + e.ave.len * 0.35) : 0.06) * s; out[2] = o.z; } else { out[0] = o.x; out[1] = o.y; out[2] = o.z; } return out; };
-  const P0 = [0, 0, 0], P1 = [0, 0, 0];
-  const CUENTA = new Array(TIPOS.length).fill(0);
+  // marca: un punto redondo con el color de la convención del grupo encima de cada animal (se ve desde la vista general)
+  const mp = new Float32Array(AG.length * 3), mc = new Float32Array(AG.length * 4);
+  AG.forEach((a, i) => { const c = new THREE.Color(CAT[ESP[a.e].cat]?.c || '#7DA0B8'); mc[i * 4] = c.r; mc[i * 4 + 1] = c.g; mc[i * 4 + 2] = c.b; mc[i * 4 + 3] = 1; });
+  const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mp, 3).setUsage(THREE.DynamicDrawUsage)); mg.setAttribute('color', new THREE.BufferAttribute(mc, 4).setUsage(THREE.DynamicDrawUsage));
+  const marcas = new THREE.Points(mg, new THREE.PointsMaterial({ size: movil ? 7 : 9, map: disco, alphaTest: 0.3, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
+  marcas.frustumCulled = false; marcas.renderOrder = 10; grupo.add(marcas);
+  const lineas = { set visible(v) { FUERTE.o.visible = TENUE.o.visible = v; } };
+  const alto = (a) => { const e = ESP[a.e]; return (e.ave ? (e.ave.alto + e.ave.len * 0.35) : 0.06) * MAL[a.e].s; };
+  const ancla = (o, out) => { if (o.id !== undefined) { out[0] = o.x; out[1] = o.y + alto(o); out[2] = o.z; } else { out[0] = o.x; out[1] = o.y; out[2] = o.z; } return out; };
+  const P0 = [0, 0, 0], P1 = [0, 0, 0], Q = [0, 0, 0], Rr = [0, 0, 0];
+  const CUENTA = new Array(TIPOS.length).fill(0), ENC = new Array(TIPOS.length).fill(0);
+  let np = 0;
+  function pintar(C, A, Bv, t, pulso, tiempo) {
+    if (C.n >= MAXL) return; ancla(A, P0); ancla(Bv, P1);
+    const d = Math.hypot(P1[0] - P0[0], P1[2] - P0[2]), h = Math.min(45, 1.5 + d * 0.2), c = COLT[t];
+    const pt = (u, o) => { o[0] = P0[0] + (P1[0] - P0[0]) * u; o[1] = P0[1] + (P1[1] - P0[1]) * u + Math.sin(Math.PI * u) * h; o[2] = P0[2] + (P1[2] - P0[2]) * u; return o; };
+    const P = C.p.array, K = C.c.array;
+    for (let s = 0; s < SEG; s++) {
+      pt(s / SEG, Q); pt((s + 1) / SEG, Rr); const o = (C.n * SEG + s) * 6;
+      P[o] = Q[0]; P[o + 1] = Q[1]; P[o + 2] = Q[2]; P[o + 3] = Rr[0]; P[o + 4] = Rr[1]; P[o + 5] = Rr[2];
+      K[o] = c.r; K[o + 1] = c.g; K[o + 2] = c.b; K[o + 3] = c.r; K[o + 4] = c.g; K[o + 5] = c.b;
+    }
+    if (pulso && np < MAXL) { const u = ((tiempo * (0.5 + 30 / (d + 30)) * 0.5 + C.n * 0.137) % 1), o = np * 3, oc = np * 4; pt(u, Q); pp[o] = Q[0]; pp[o + 1] = Q[1]; pp[o + 2] = Q[2]; pc[oc] = Math.min(1, c.r * 1.25 + 0.12); pc[oc + 1] = Math.min(1, c.g * 1.25 + 0.12); pc[oc + 2] = Math.min(1, c.b * 1.25 + 0.12); pc[oc + 3] = 1; np++; }
+    C.n++;
+  }
   function dibujarRed(tiempo) {
-    let nl = 0, np = 0; CUENTA.fill(0);
-    const pintar = (A, Bv, t, al, grosor) => {
-      if (nl >= MAXL) return; ancla(A, P0); ancla(Bv, P1);
-      const d = Math.hypot(P1[0] - P0[0], P1[2] - P0[2]), h = Math.min(30, 1.5 + d * 0.22), c = COLT[t];
-      const pt = (u, o) => { o[0] = P0[0] + (P1[0] - P0[0]) * u; o[1] = P0[1] + (P1[1] - P0[1]) * u + Math.sin(Math.PI * u) * h; o[2] = P0[2] + (P1[2] - P0[2]) * u; return o; };
-      const q = [0, 0, 0], r = [0, 0, 0];
-      for (let s = 0; s < SEG; s++) {
-        pt(s / SEG, q); pt((s + 1) / SEG, r); const o = (nl * SEG + s) * 6, oc = (nl * SEG + s) * 8, f0 = 0.55 + 0.45 * (s / SEG), f1 = 0.55 + 0.45 * ((s + 1) / SEG);
-        lp[o] = q[0]; lp[o + 1] = q[1]; lp[o + 2] = q[2]; lp[o + 3] = r[0]; lp[o + 4] = r[1]; lp[o + 5] = r[2];
-        lc[oc] = c.r; lc[oc + 1] = c.g; lc[oc + 2] = c.b; lc[oc + 3] = al * f0 * grosor; lc[oc + 4] = c.r; lc[oc + 5] = c.g; lc[oc + 6] = c.b; lc[oc + 7] = al * f1 * grosor;
-      }
-      if (np < MAXL * 2) { const u = ((tiempo * 0.45 + nl * 0.137) % 1), o = np * 3, oc = np * 4; pt(u, q); pp[o] = q[0]; pp[o + 1] = q[1]; pp[o + 2] = q[2]; pc[oc] = Math.min(1, c.r * 1.3 + 0.1); pc[oc + 1] = Math.min(1, c.g * 1.3 + 0.1); pc[oc + 2] = Math.min(1, c.b * 1.3 + 0.1); pc[oc + 3] = al; np++; }
-      nl++;
-    };
-    if (ESTADO.on) for (const L of LINKS.values()) { if (L.al < 0.02) continue; CUENTA[L.t]++; if (!ESTADO.tipos.has(L.t)) continue; const sel = ESTADO.sel; pintar(L.a, L.b, L.t, L.al * (sel && L.a !== sel && L.b !== sel ? 0.25 : 0.95), 1); }
+    FUERTE.n = TENUE.n = 0; np = 0; CUENTA.fill(0); ENC.fill(0);
+    const sel = ESTADO.sel;
+    if (ESTADO.on) for (const L of LINKS.values()) {
+      if (L.al < 0.3) continue; const d = Math.hypot(L.b.x - L.a.x, L.b.z - L.a.z), enc = d < CERCA;
+      CUENTA[L.t]++; if (enc) ENC[L.t]++; if (!ESTADO.tipos.has(L.t)) continue;
+      const delSel = sel && (L.a === sel || L.b === sel);
+      // encuentro (la interacción está ocurriendo) o del animal elegido: trazo grueso con pulso; conexión a distancia: trazo fino
+      pintar(enc || delSel ? FUERTE : TENUE, L.a, L.b, L.t, enc || delSel || (!sel && L.a.id % 3 === 0), tiempo);
+    }
     // red potencial del agente elegido: hasta el individuo o árbol más cercano de cada especie con la que tiene relación
-    if (ESTADO.sel && ESTADO.pot) for (const p of ESTADO.pot) pintar(ESTADO.sel, p.b, p.t, 0.5, 0.8);
-    lg.setDrawRange(0, nl * SEG * 2); lg.attributes.position.needsUpdate = true; lg.attributes.color.needsUpdate = true;
+    if (sel && ESTADO.pot) for (const p of ESTADO.pot) pintar(FUERTE, sel, p.b, p.t, true, tiempo);
+    for (const C of [FUERTE, TENUE]) { C.g.instanceCount = C.n * SEG; C.p.needsUpdate = true; C.c.needsUpdate = true; }
     pg.setDrawRange(0, np); pg.attributes.position.needsUpdate = true; pg.attributes.color.needsUpdate = true;
+    AG.forEach((a, i) => { mp[i * 3] = a.x; mp[i * 3 + 1] = a.y + alto(a) * 1.6 + 1.2; mp[i * 3 + 2] = a.z; mc[i * 4 + 3] = a.vis && ESTADO.agentes ? 1 : 0; });
+    mg.attributes.position.needsUpdate = true; mg.attributes.color.needsUpdate = true;
   }
   function redPotencial(a) {
     const L = [], R = REL[a.e];
-    for (const [f, r] of R.flora) { let best = null, bd = 1e9; for (const t of a.h.arb) if (t.fl.includes(f)) { const d = Math.hypot(t.x - a.x, t.z - a.z); if (d < bd) { bd = d; best = t; } } if (best && bd < 600) L.push({ b: best, t: r.t, n: B.flora[f].n, rol: r.rol }); }
-    for (const r of R.fauna) { let best = null, bd = 1e9; for (const b of POR[r.o] || []) { if (b.h !== a.h) continue; const d = Math.hypot(b.x - a.x, b.z - a.z); if (d < bd) { bd = d; best = b; } } if (best) L.push({ b: best, t: r.t, n: ESP[r.o].n, rol: r.rol }); }
+    const AR = arbolesCerca(a.h, a.x, a.z, 400); for (const [f, r] of R.flora) { let best = null, bd = 1e9; for (const t of AR) if (t.fl.includes(f)) { const d = Math.hypot(t.x - a.x, t.z - a.z); if (d < bd) { bd = d; best = t; } } if (best && bd < 600) L.push({ b: best, t: r.t, n: B.flora[f].n, rol: r.rol }); }
+    for (const r of R.fauna) { let best = null, bd = 1e9; for (const b of POR[r.o] || []) { const d = Math.hypot(b.x - a.x, b.z - a.z); if (d < bd) { bd = d; best = b; } } if (best) L.push({ b: best, t: r.t, n: ESP[r.o].n, rol: r.rol }); }
     L.sort((p, q) => Math.hypot(p.b.x - a.x, p.b.z - a.z) - Math.hypot(q.b.x - a.x, q.b.z - a.z)); return L.slice(0, 14);
   }
 
@@ -409,9 +462,9 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
     const cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2; const g = cv.getContext('2d'), P = GEO[k].attributes.position.array;
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (let i = 0; i < P.length; i += 3) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y0 = Math.min(y0, P[i + 1]); y1 = Math.max(y1, P[i + 1]); }
     const sc = Math.min((w * 2 - 8) / (x1 - x0), (h * 2 - 8) / (y1 - y0)), ox = (w * 2 - (x1 - x0) * sc) / 2, oy = (h * 2 - (y1 - y0) * sc) / 2;
-    g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 0.6; g.beginPath();
-    for (let i = 0; i < P.length; i += 9) { g.moveTo(ox + (P[i] - x0) * sc, h * 2 - oy - (P[i + 1] - y0) * sc); g.lineTo(ox + (P[i + 3] - x0) * sc, h * 2 - oy - (P[i + 4] - y0) * sc); g.lineTo(ox + (P[i + 6] - x0) * sc, h * 2 - oy - (P[i + 7] - y0) * sc); g.closePath(); }
-    g.fill(); g.stroke(); return cv.toDataURL();
+    g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 1; g.lineJoin = 'round';
+    for (let i = 0; i < P.length; i += 9) { g.beginPath(); g.moveTo(ox + (P[i] - x0) * sc, h * 2 - oy - (P[i + 1] - y0) * sc); g.lineTo(ox + (P[i + 3] - x0) * sc, h * 2 - oy - (P[i + 4] - y0) * sc); g.lineTo(ox + (P[i + 6] - x0) * sc, h * 2 - oy - (P[i + 7] - y0) * sc); g.closePath(); g.fill(); g.stroke(); }
+    return cv.toDataURL();
   }
 
   /* ---------- interfaz ---------- */
@@ -461,11 +514,11 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   const cats = [...new Set(Object.keys(MAL).map(k => ESP[k].cat))].sort();
   pan.innerHTML = `<div class="bt-cab"><h3>RED BIÓTICA</h3><button class="bt-sw on" id="bt-on" title="Prender o apagar las relaciones entre agentes">RELACIONES</button><button class="bt-min" id="bt-min" title="Plegar">–</button></div>
     <div class="bt-cuerpo">
-      <div class="bt-sub">TIPOS DE RELACIÓN <span>activas ahora</span></div>
+      <div class="bt-sub">TIPOS DE RELACIÓN <span>conexiones ahora</span></div>
       ${TIPOS.map(t => `<button class="bt-tipo" data-t="${t.id}"><i style="background:${t.c}"></i>${icono(t.id, t.c)}<span>${t.n}</span><b id="bt-c-${t.id}">0</b></button>`).join('')}
-      <div class="bt-sub">AGENTES NO HUMANOS <span>${AG.length} individuos</span></div>
+      <div class="bt-sub">AGENTES NO HUMANOS <span>${AG.length} individuos · ${HUM.length} humedales y ${PAR.length} zonas verdes</span></div>
       ${cats.map(c => `<div class="bt-cat" style="color:${CAT[c].c}">${CAT[c].n.toUpperCase()}</div><div class="bt-esp">${Object.keys(MAL).filter(k => ESP[k].cat === c).map(k => `<button class="bt-e" data-k="${k}" title="${ESP[k].sci}"><img src="${IMG[k]}" alt="">${ESP[k].n}<small>${POR[k].length}</small></button>`).join('')}</div>`).join('')}
-      <div class="bt-nota">Red: Red de Interacciones Bióticas de Kennedy (${B.enlaces.length} relaciones entre estas ${Object.keys(MAL).length} especies y ${Object.keys(B.flora).length} especies de árboles del censo SIGAU). Una línea aparece cuando dos agentes con relación en la red se encuentran (o un animal llega a un árbol de esa especie) y se mueve con ellos. Movimiento: bandadas y zonas de Couzin, forrajeo floral de lugar central, balsas de aves acuáticas, caminata correlacionada con ámbito hogareño, persecución y huida.</div>
+      <div class="bt-nota">Red: Red de Interacciones Bióticas de Kennedy (${B.enlaces.length} relaciones entre estas ${Object.keys(MAL).length} especies y ${Object.keys(B.flora).length} especies de árboles del censo SIGAU). Cada animal se conecta con el individuo más cercano de cada especie con la que tiene relación en la red (hasta 220 m) y con los árboles relacionados (hasta 90 m); las líneas se mueven con ellos. Línea fuerte con pulso: encuentro (la interacción está ocurriendo); tenue: conexión a distancia. Movimiento: bandadas y zonas de Couzin, forrajeo floral de lugar central, balsas de aves acuáticas, caminata correlacionada con ámbito hogareño, persecución y huida.</div>
     </div>`;
   const ficha = document.createElement('div'); ficha.id = 'bt-ficha';
   const tog = document.createElement('button'); tog.id = 'bt-tog'; tog.textContent = 'RED BIÓTICA';
