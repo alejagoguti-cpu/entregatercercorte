@@ -185,6 +185,9 @@ export async function iniciarSimulacion(cfg = {}) {
   contar('huertero', HUE.length * 3); contar('abeja', HUE.length * 30); contar('copeton', HUE.length * 6); contar('mirla', HUE.length * 3); contar('colibri', HUE.length * 2); contar('lombriz', HUE.length * 2000);
   const bicis = rEntrega.map((l, i) => ({ tipo: 'recu', entrega: i, lin: l, d: 0, sentido: 1, vis: false })); // bicicargas de hongos a las cocinas (se ven como recuperadores)
   A.push(...bicis);
+  // la red biótica (data3d/biotica.js) trae su propia fauna con forma 3D y movimiento por especie: aquí no se duplica
+  const SIN = new Set(cfg.sinFauna || []);
+  if (SIN.size) { for (let i = A.length - 1; i >= 0; i--) if (SIN.has(A[i].tipo)) A.splice(i, 1); for (const k of SIN) delete CNT[k]; }
 
   /* ---------- interfaz ---------- */
   const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: true };
@@ -201,7 +204,7 @@ export async function iniciarSimulacion(cfg = {}) {
     ${Object.entries(CONV).map(([k, c]) => `<div class="gs-conv"><b style="background:${c.c}">${k}</b><div>${c.t}<small>${c.a} · ${c.h}</small></div></div>`).join('')}`;
   const der = document.createElement('div'); der.className = 'gs-pan'; der.id = 'gs-der';
   const fila = (k) => `<tr><td><i style="background:${ACT[k].c}"></i></td><td>${ACT[k].n}${ACT[k].p ? `<span class="p">${ACT[k].p}</span>` : ''}</td><td>${(CNT[k] || 0).toLocaleString('es-CO')}</td><td id="gs-a-${k}">–</td></tr>`;
-  const H_ = Object.keys(ACT).filter(k => ACT[k].g === 'h'), NH = Object.keys(ACT).filter(k => ACT[k].g === 'n');
+  const H_ = Object.keys(ACT).filter(k => ACT[k].g === 'h'), NH = Object.keys(ACT).filter(k => ACT[k].g === 'n' && !SIN.has(k));
   const tot = (L) => L.reduce((s, k) => s + (CNT[k] || 0), 0).toLocaleString('es-CO');
   der.innerHTML = `<h3>ACTORES <em>total · activos</em></h3>
     <div class="gs-sub">HUMANOS <span>${tot(H_)}</span></div><table class="gs-t">${H_.map(fila).join('')}</table>

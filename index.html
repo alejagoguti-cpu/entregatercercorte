@@ -3043,7 +3043,10 @@ $('b-hd').onclick = async () => {
 
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
-  Promise.all([import('./data3d/giro_sim.js?v=7'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say })).catch(e => console.warn('simulación Kennedy:', e));
+  const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
+  Promise.all([import('./data3d/giro_sim.js?v=8'), listoK()]).then(([m]) => m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED }))
+    .then(() => import('./data3d/biotica.js?v=1')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL }))
+    .catch(e => console.warn('simulación Kennedy:', e));
 } else import('./data3d/simulador.js?v=6').then(m => {
   SIM = m.crearSimulador({
     T3: () => T3, traf: () => TRAF, peat: () => PEAT, pajaro: () => PAJARO, say, movil: MOVIL,
