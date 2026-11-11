@@ -3062,7 +3062,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=16'), import('./data3d/estrategias.js?v=4'), import('./data3d/red_actores.js?v=2'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=16'), import('./data3d/estrategias.js?v=4'), import('./data3d/red_actores.js?v=3'), listoK()])
     .then(async ([m, me, mRed]) => {
       const redUI = await mRed.iniciarRedActoresUI({ T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 });
       window.MOSTRAR_RED_ACTORES = (id) => redUI.mostrarRedActores(id);

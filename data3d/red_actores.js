@@ -44,6 +44,8 @@ export async function iniciarRedActoresUI({ T3, lw, OX = 2095.67, OZ = -109.06, 
 #ra-floating-trigger{position:fixed;z-index:90;right:16px;top:16px;display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(8,16,26,.96));border:1.5px solid #38bdf8;box-shadow:0 8px 24px rgba(0,0,0,.6),0 0 14px rgba(56,189,248,.35);color:#e2f3ff;font:750 12px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;transition:all .2s;backdrop-filter:blur(10px)}
 #ra-floating-trigger:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 12px 28px rgba(0,0,0,.7),0 0 20px rgba(56,189,248,.6);border-color:#7dd3fc}
 #ra-floating-trigger i{display:inline-block;font-style:normal;font-size:15px}
+#ra-georef-link{position:fixed;z-index:90;right:190px;top:16px;display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(8,16,26,.96));border:1.5px solid #e0a21f;box-shadow:0 8px 24px rgba(0,0,0,.6);color:#fff3d6;font:750 12px system-ui,-apple-system,"Segoe UI",sans-serif;text-decoration:none;backdrop-filter:blur(10px)}
+#ra-georef-link:hover{transform:translateY(-2px)}
 
 /* Modal principal de la red */
 #ra-modal{position:fixed;z-index:95;right:16px;top:60px;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 75px);background:rgba(8,16,26,.95);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1.5px solid var(--ra-c,rgba(125,211,252,.4));border-radius:18px;box-shadow:0 24px 55px rgba(0,0,0,.75);color:#e2f3ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;overflow:hidden;transition:transform .25s ease,opacity .25s ease;transform:translateY(0);opacity:1}
@@ -129,6 +131,7 @@ export async function iniciarRedActoresUI({ T3, lw, OX = 2095.67, OZ = -109.06, 
 .ra-rel-card small{color:#94a3b8;display:block;margin-top:2px;font-size:10px}
 
 @media(max-width:760px){
+  #ra-georef-link{top:auto;right:12px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 100px);font-size:11px;padding:7px 11px}
   #ra-floating-trigger{top:auto;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 58px);right:12px;font-size:11px;padding:7px 11px}
   #ra-modal{right:8px;left:8px;width:auto;top:auto;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 52px);max-height:72vh}
   .ra-svg-wrap{height:250px}
