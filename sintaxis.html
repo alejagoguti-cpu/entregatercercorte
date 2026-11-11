@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sintaxis Bavaria Común</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--bg2:#0b1015;--line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);--tx:#e6ecf0;--mu:#8b9aa7;--mu2:#5f6e7a;--amb:#e3a64a;--verde:#8fc46a;--agua:#5fb3d9;--rojo:#e0664f;--mono:"JetBrains Mono",ui-monospace,monospace;--sans:"Space Grotesk",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans)}
+a{color:var(--amb)}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:14px 18px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:19px;font-weight:600}
+header h1 small{display:block;font:400 11.5px var(--mono);color:var(--mu);margin-top:2px}
+header nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:600 12px var(--sans);padding:7px 12px;border-radius:8px;border:1px solid var(--line2);background:var(--bg2);color:var(--tx);cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--amb)}.btn.on{background:var(--amb);color:#1a1204;border-color:transparent}
+.wrap{max-width:1280px;margin:0 auto;padding:16px 18px 40px}
+h2{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amb);margin:30px 0 10px}
+p.lead{font-size:14.5px;line-height:1.55;color:#cfd8de;max-width:900px;margin:0 0 12px}
+.nota{font:400 11px/1.5 var(--mono);color:var(--mu)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.card b{display:block;font:600 20px var(--mono)}
+.card span{font-size:11.5px;color:var(--mu)}
+.card i{font:400 11px var(--mono);font-style:normal}
+.mapa{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.mapa svg{width:100%;height:auto;display:block;background:#05080b;border:1px solid var(--line);border-radius:10px}
+.ctrl .grp{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.leyenda{height:10px;border-radius:5px;margin:6px 0 3px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font:600 10.5px var(--mono);color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
+td.n{font-family:var(--mono);text-align:right}
+.uso{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;color:#000}
+.rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+.rec div{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--c);border-radius:10px;padding:10px 12px}
+.rec b{color:var(--c)}.rec p{margin:5px 0 0;font-size:13px;line-height:1.5;color:#cfd8de}
+.bar{height:8px;border-radius:4px;background:#1a222b;position:relative;overflow:hidden}.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+@media(max-width:900px){.mapa{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sintaxis espacial · Bavaria Común<small>análisis angular de segmentos · antes y después de abrir el predio · 600 m y ciudad</small></h1>
+  <nav><a class="btn" href="modelo_causal.html">Modelo causal</a><a class="btn" href="./?modo=kennedy">Red 3D</a><a class="btn" href="https://anasoficasca-code.github.io/simulador/bavaria.html" target="_blank">Proyecto Bavaria ↗</a></nav>
+</header>
+<div class="wrap">
+  <p class="lead" id="lead"></p>
+  <div class="cards" id="cards"></div>
+
+  <h2>Mapa de sintaxis</h2>
+  <div class="mapa">
+    <svg id="map"></svg>
+    <div class="ctrl">
+      <div class="nota" style="margin-bottom:4px">Medida</div>
+      <div class="grp" id="gM"></div>
+      <div class="nota" style="margin-bottom:4px">Estado</div>
+      <div class="grp" id="gE"></div>
+      <div class="leyenda" id="ley"></div><div class="nota" id="leyT"></div>
+      <p class="nota" id="expl" style="margin-top:12px"></p>
+      <p class="nota">Los números 1–16 son las entradas del predio, con su color de uso recomendado (abajo). El anillo punteado marca, aproximadamente, 600 m desde el borde del predio. Los segmentos se colorean por rango (percentil) dentro del área visible, como en DepthmapX: rojo integrado, azul segregado.</p>
+    </div>
+  </div>
+
+  <h2>Qué lado gana y qué lado se queda atrás</h2>
+  <p class="lead" id="ladosT"></p>
+  <div id="lados"></div>
+
+  <h2>Los pasajes nuevos</h2>
+  <p class="lead" id="pasT"></p>
+
+  <h2>Entradas: dónde va cada cosa</h2>
+  <p class="lead">Cada uso necesita una sintaxis distinta. El <b>mercado</b> quiere paso de gente (elección alta), la <b>cocina</b> y la <b>asamblea</b> quieren estar cerca de las casas (integración local a 800 m, calles residenciales), el <b>compostaje</b> quiere entrada de camiones desde una avenida y lejos de las ventanas, y el <b>bosque</b> quiere calma (elección baja). Con esos criterios, cada entrada recibe un puntaje y se asigna el uso donde mejor encaja.</p>
+  <div style="overflow-x:auto"><table id="tab"></table></div>
+
+  <h2>Recomendaciones para la propuesta</h2>
+  <div class="rec" id="rec"></div>
+  <p class="nota" id="fuente" style="margin-top:20px"></p>
+</div>
+<script>
+(async () => {
+const $ = s => document.querySelector(s), NS = 'http://www.w3.org/2000/svg';
+const D = await fetch('data3d/sintaxis_bavaria.json').then(r => r.json());
+const S = D.seg, RS = D.resumen, C = D.centro;
+const MED = [['rn', 'Integración Rn', 0], ['r8', 'Integración 800 m', 1], ['ch', 'Elección (NACH)', 2]];
+const EST = [['b', 'Después'], ['a', 'Antes'], ['d', 'Diferencia']];
+let med = 1, est = 'b';
+const f2 = v => v.toLocaleString('es-CO', { maximumFractionDigits: 3 });
+const pct = (a, b) => ((b - a) / a * 100);
+const sg = v => (v >= 0 ? '+' : '') + v.toFixed(1) + ' %';
+
+/* ---------- resumen ---------- */
+const A6 = RS.antes_600m, D6 = RS.despues_600m, AT = RS.antes_todo, DT = RS.despues_todo;
+$('#lead').innerHTML = `El predio de Bavaria es hoy un hueco de ${D.sitio ? '71' : ''} ha cerrado por un muro. Abrirlo con <b>${(D.pasajes_m / 1000).toFixed(1)} km de pasajes</b> (${S.filter(s => s.n).length} segmentos nuevos) cambia poco la ciudad, pero sí su entorno inmediato. Este análisis usa los mismos datos del proyecto para decidir <b>dónde poner cada componente</b> de Bavaria Común y <b>qué bordes hay que abrir más</b>.`;
+const card = (n, a, b, d = 3, inv) => { const p = pct(a, b), col = (inv ? -p : p) >= 0 ? 'var(--verde)' : 'var(--rojo)'; return `<div class="card"><b>${f2(+b.toFixed(d))}</b><span>${n}</span><br><i style="color:${col}">${sg(p)}</i> <i style="color:var(--mu2)">antes ${f2(+a.toFixed(d))}</i></div>`; };
+$('#cards').innerHTML = card('Integración Rn · 600 m', A6.nain, D6.nain) + card('Integración 800 m · 600 m', A6.nain8, D6.nain8) + card('Elección · 600 m', A6.nach, D6.nach) + card('Inteligibilidad · 600 m', A6.inteligibilidad, D6.inteligibilidad) + card('Sinergia · 600 m', A6.sinergia, D6.sinergia) + card('Profundidad media · 600 m', A6.prof, D6.prof, 2, true) + card('km de red · 600 m', A6.km, D6.km, 1) + card('Integración Rn · ciudad', AT.nain, DT.nain);
+
+/* ---------- geometría ---------- */
+const xs = D.sitio.map(p => p[0]), ys = D.sitio.map(p => p[1]);
+const bb = [Math.min(...xs) - 750, Math.min(...ys) - 750, Math.max(...xs) + 750, Math.max(...ys) + 750];
+const W = 1000, sc = W / (bb[2] - bb[0]), H = Math.round((bb[3] - bb[1]) * sc);
+const X = x => (x - bb[0]) * sc, Y = y => (bb[3] - y) * sc;
+const enVista = s => s.p.some(q => q[0] > bb[0] && q[0] < bb[2] && q[1] > bb[1] && q[1] < bb[3]);
+const VS = S.filter(enVista);
+const svg = $('#map'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+const el = (t, a = {}, p = svg, tx) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (tx != null) e.textContent = tx; p.appendChild(e); return e; };
+const RAMPA = ['#2b3cbf', '#2f8fd6', '#36c2b4', '#8fd14f', '#f2d23c', '#f28c28', '#e0332b'];
+const rampa = t => { t = Math.max(0, Math.min(1, t)) * (RAMPA.length - 1); const i = Math.floor(t), f = t - i, a = RAMPA[i], b = RAMPA[Math.min(i + 1, RAMPA.length - 1)]; const h = s => [1, 3, 5].map(k => parseInt(s.slice(k, k + 2), 16)); const A_ = h(a), B_ = h(b); return 'rgb(' + A_.map((v, k) => Math.round(v + (B_[k] - v) * f)).join(',') + ')'; };
+const DIV = t => { t = Math.max(-1, Math.min(1, t)); const g = [60, 66, 74]; const c = t >= 0 ? [232, 76, 61] : [64, 140, 230]; const k = Math.abs(t); return `rgb(${g.map((v, i) => Math.round(v + (c[i] - v) * k)).join(',')})`; };
+
+/* ---------- uso por entrada ---------- */
+const E = D.entradas, norm = k => { const v = E.map(e => e[k]); const mi = Math.min(...v), ma = Math.max(...v); return e => (e[k] - mi) / ((ma - mi) || 1); };
+const nCh = norm('ch'), nRn = norm('rn'), nR8 = norm('r8'), nRes = norm('resid'), nX = norm('x');
+const USOS = [
+  ['mer', 'Mercado y distribución', '#c2652a', e => .55 * nCh(e) + .3 * nRn(e) + .15 * nR8(e), 'elección y alcance de ciudad altos: por aquí pasa la gente'],
+  ['cmp', 'Compostaje (camiones)', '#e3a64a', e => .55 * (e.via ? 1 : 0) + .3 * (1 - nRes(e)) + .15 * (1 - nX(e)), 'llega desde una avenida, lejos de las ventanas y del lado de Corabastos'],
+  ['coc', 'Cocina comunitaria', '#d98b6a', e => .5 * nR8(e) + .5 * nRes(e), 'integración local alta y pegada a calles residenciales'],
+  ['gob', 'Casa de la asamblea', '#e58aa8', e => .3 * nR8(e) + .55 * nRes(e) + .15 * nRn(e), 'a la mano de los barrios y fácil de encontrar'],
+  ['ban', 'Acceso diario a bancales', '#8fc46a', e => .55 * nRes(e) + .45 * (1 - nCh(e)), 'calles de barrio tranquilas: el cuidado es diario y a pie'],
+  ['bos', 'Entrada al bosque', '#4f8a3c', e => (1 - nCh(e)) * (e.via ? .6 : 1), 'elección baja: el bosque necesita calma, solo a pie'],
+];
+const asign = {}; const usada = new Set();
+for (const [id, , , f] of USOS) { const best = E.filter(e => !usada.has(e.i)).sort((a, b) => f(b) - f(a))[0]; asign[id] = best; usada.add(best.i); }
+const usoDe = i => USOS.find(u => asign[u[0]].i === i);
+
+/* ---------- dibujar mapa ---------- */
+const gS = el('g'), gTop = el('g');
+function dibujar() {
+  gS.innerHTML = ''; gTop.innerHTML = '';
+  const k = MED[med][2];
+  const val = s => est === 'd' ? (s.a ? s.b[k] - s.a[k] : s.b[k] * .0 + .0001 * 999) : (s[est] ? s[est][k] : null);
+  const vals = VS.map(s => est === 'd' ? (s.a ? s.b[k] - s.a[k] : null) : (s[est] ? s[est][k] : null)).filter(v => v != null).sort((a, b) => a - b);
+  const rank = v => { let lo = 0, hi = vals.length; while (lo < hi) { const m = (lo + hi) >> 1; vals[m] < v ? lo = m + 1 : hi = m; } return lo / vals.length; };
+  const amax = Math.max(...vals.map(Math.abs)) || 1;
+  const orden = VS.map(s => { const v = est === 'd' ? (s.a ? s.b[k] - s.a[k] : null) : (s[est] ? s[est][k] : null); return { s, v }; }).sort((x, y) => (x.v ?? -9) - (y.v ?? -9));
+  for (const { s, v } of orden) {
+    let col, w = s.h === 'trunk' || s.h === 'primary' ? 2.4 : s.h === 'footway' ? 1 : 1.5;
+    if (est === 'd') { col = s.n ? '#ffffff' : DIV(v / (amax * .5)); if (s.n) w = 2.6; }
+    else if (v == null) { col = '#20262d'; } else col = rampa(rank(v));
+    el('path', { d: s.p.map((q, i) => (i ? 'L' : 'M') + X(q[0]).toFixed(1) + ' ' + Y(q[1]).toFixed(1)).join(''), stroke: col, 'stroke-width': w, fill: 'none', 'stroke-linecap': 'round' }, gS);
+  }
+  el('path', { d: D.sitio.map((q, i) => (i ? 'L' : 'M') + X(q[0]) + ' ' + Y(q[1])).join('') + 'Z', fill: 'rgba(143,196,106,.06)', stroke: '#8fc46a', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }, gTop);
+  el('circle', { cx: X(C[0]), cy: Y(C[1]), r: (600 + 450) * sc, fill: 'none', stroke: 'rgba(255,255,255,.25)', 'stroke-dasharray': '3 5' }, gTop);
+  for (const e of E) {
+    const u = usoDe(e.i), c = u ? u[2] : '#8b9aa7';
+    el('circle', { cx: X(e.x), cy: Y(e.y), r: 10, fill: '#000', stroke: c, 'stroke-width': 2.2 }, gTop);
+    el('text', { x: X(e.x), y: Y(e.y) + 4, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: c, 'font-family': 'JetBrains Mono,monospace' }, gTop, e.i);
+  }
+  el('text', { x: X(C[0]), y: Y(C[1]), 'text-anchor': 'middle', 'font-size': 13, fill: '#8fc46a', 'font-weight': 700 }, gTop, 'Bavaria Común');
+  // rótulos de avenidas
+  const vistos = new Set();
+  for (const s of VS) if (s.v && !vistos.has(s.v)) { const q = s.p[0]; if (q[0] < bb[0] + 60 || q[0] > bb[2] - 60 || q[1] < bb[1] + 60 || q[1] > bb[3] - 60) continue; vistos.add(s.v); el('text', { x: X(q[0]) + 6, y: Y(q[1]) - 6, 'font-size': 11, fill: '#cfd8de', 'font-style': 'italic', stroke: '#000', 'stroke-width': 3, 'paint-order': 'stroke' }, gTop, s.v); }
+  // leyenda
+  $('#ley').style.background = est === 'd' ? 'linear-gradient(90deg,rgb(64,140,230),rgb(60,66,74),rgb(232,76,61))' : `linear-gradient(90deg,${RAMPA.join(',')})`;
+  $('#leyT').textContent = est === 'd' ? 'pierde ← sin cambio → gana · blanco: pasajes nuevos' : 'segregado ← → integrado';
+  const EXP = ['Integración Rn: qué tan cerca (en giros) está cada calle de todas las demás de la ciudad. Es el alcance metropolitano.', 'Integración 800 m: lo mismo, pero a 10 minutos a pie. Es la vida de barrio: dónde se encuentran los vecinos.', 'Elección (NACH): cuántos recorridos más cortos pasan por cada calle. Es por dónde se mueve la gente.'];
+  $('#expl').textContent = EXP[med];
+}
+$('#gM').innerHTML = MED.map(([id, n], i) => `<button class="btn ${i === med ? 'on' : ''}" data-m="${i}">${n}</button>`).join('');
+$('#gE').innerHTML = EST.map(([id, n]) => `<button class="btn ${id === est ? 'on' : ''}" data-e="${id}">${n}</button>`).join('');
+document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { med = +b.dataset.m; document.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); dibujar(); });
+document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { est = b.dataset.e; document.querySelectorAll('[data-e]').forEach(x => x.classList.toggle('on', x === b)); dibujar(); });
+dibujar();
+
+/* ---------- lados (600 m) ---------- */
+const N6 = S.filter(s => s.d > 0 && s.d <= 600 && s.a);
+const lado = s => { const q = s.p[0], ang = Math.atan2(q[1] - C[1], q[0] - C[0]) * 180 / Math.PI; return ang >= 45 && ang < 135 ? 'Norte' : ang >= -45 && ang < 45 ? 'Oriente' : ang >= -135 && ang < -45 ? 'Sur' : 'Occidente'; };
+const L = {}; for (const s of N6) { const k = lado(s); (L[k] = L[k] || []).push(s); }
+const mean = (arr, f) => arr.reduce((a, s) => a + f(s), 0) / arr.length;
+const LADOS = ['Norte', 'Oriente', 'Sur', 'Occidente'].filter(k => L[k]).map(k => { const a = L[k]; return { k, n: a.length, res: a.filter(s => s.h === 'residential').length / a.length, a8: mean(a, s => s.a[1]), b8: mean(a, s => s.b[1]), aRn: mean(a, s => s.a[0]), bRn: mean(a, s => s.b[0]), ach: mean(a, s => s.a[2]), bch: mean(a, s => s.b[2]) }; });
+LADOS.forEach(l => { l.d8 = pct(l.a8, l.b8); l.dRn = pct(l.aRn, l.bRn); l.dch = pct(l.ach, l.bch); });
+const peor = LADOS.slice().sort((a, b) => a.bRn - b.bRn)[0], mejor = LADOS.slice().sort((a, b) => b.dRn - a.dRn)[0];
+const maxRn = Math.max(...LADOS.map(l => l.bRn));
+$('#ladosT').innerHTML = `Dentro de 600 m del predio, el lado <b>${peor.k}</b> es el más segregado después de abrir (integración Rn ${peor.bRn.toFixed(3)}, ${Math.round(peor.res * 100)} % de sus calles son residenciales). El lado que más gana es <b>${mejor.k}</b> (${sg(mejor.dRn)} en integración Rn). Si los barrios de un lado casi no ganan, los pasajes no los están alcanzando: ahí hay que abrir más.`;
+$('#lados').innerHTML = `<table><tr><th>Lado</th><th>Calles</th><th>% residencial</th><th>Integración Rn después</th><th class="n">Δ Rn</th><th class="n">Δ 800 m</th><th class="n">Δ elección</th></tr>${LADOS.map(l => `<tr><td><b>${l.k}</b></td><td class="n">${l.n}</td><td class="n">${Math.round(l.res * 100)} %</td><td><div class="bar"><i style="width:${(l.bRn / maxRn * 100).toFixed(0)}%;background:${rampa((l.bRn - 1.2) / .25)}"></i></div><span class="nota">${l.bRn.toFixed(3)}</span></td><td class="n" style="color:${l.dRn >= 0 ? 'var(--verde)' : 'var(--rojo)'}">${sg(l.dRn)}</td><td class="n" style="color:${l.d8 >= 0 ? 'var(--verde)' : 'var(--rojo)'}">${sg(l.d8)}</td><td class="n" style="color:${l.dch >= 0 ? 'var(--verde)' : 'var(--rojo)'}">${sg(l.dch)}</td></tr>`).join('')}</table>`;
+
+/* ---------- pasajes ---------- */
+const PS = S.filter(s => s.n), ref = S.filter(s => s.d <= 600).map(s => s.b[2]).sort((a, b) => a - b), ref8 = S.filter(s => s.d <= 600).map(s => s.b[1]).sort((a, b) => a - b);
+const pctl = (arr, v) => { let i = 0; while (i < arr.length && arr[i] < v) i++; return i / arr.length; };
+const pCh = PS.map(s => pctl(ref, s.b[2])), p8 = PS.map(s => pctl(ref8, s.b[1]));
+const espina = pCh.filter(p => p >= .75).length, calmos = pCh.filter(p => p < .4).length, med8 = p8.slice().sort((a, b) => a - b)[Math.floor(p8.length / 2)];
+const mejorP = Math.max(...pCh);
+$('#pasT').innerHTML = espina === 0 ? `<b>Hallazgo importante:</b> ninguno de los <b>${PS.length}</b> tramos de pasaje nuevos llega al 25 % de calles con más elección del entorno (el mejor queda en el percentil ${Math.round(mejorP * 100)}). Los pasajes, tal como están trazados, <b>no atraen paso de gente</b>: el movimiento sigue por la Av. Boyacá y las vías arteriales. Eso tiene dos consecuencias para la propuesta. (1) Lo que vive del paso (mercado, puestos, cocina abierta) tiene que ir en el <b>borde</b>, pegado a las entradas con más elección, no en el centro del predio. (2) Adentro los pasajes funcionan como recorridos lentos y verdes (${calmos} de ${PS.length} están en la parte baja de elección), buenos para bancales y bosque. Si se quiere un centro vivo adentro, hay que trazar al menos un pasaje que cruce de lado a lado y conecte en línea recta dos entradas con mucha elección. Su mediana de integración local está en el percentil <b>${Math.round(med8 * 100)}</b> del entorno.` : `De los <b>${PS.length}</b> tramos de pasaje nuevos, <b>${espina}</b> quedan en el 25 % de calles con más elección del entorno: son la <b>espina</b> por donde va a pasar la gente, y ahí conviene poner fachadas activas (mercado, cocina, puestos). Otros <b>${calmos}</b> quedan en la parte baja de elección: sirven como recorridos lentos y verdes, hacia bancales y bosque. La mediana de los pasajes está en el percentil <b>${Math.round(med8 * 100)}</b> de integración local, ${med8 >= .5 ? 'por encima' : 'por debajo'} de la calle típica del entorno. En el mapa, elige «Diferencia» para verlos en blanco.`;
+
+/* ---------- tabla de entradas ---------- */
+$('#tab').innerHTML = `<tr><th>#</th><th class="n">Integración Rn</th><th class="n">Integración 800 m</th><th class="n">Elección</th><th>Avenida</th><th class="n">Calles residenciales a 70 m</th><th>Uso recomendado</th></tr>` +
+  E.map(e => { const u = usoDe(e.i); return `<tr><td><b>${e.i}</b></td><td class="n">${e.rn.toFixed(3)}</td><td class="n">${e.r8.toFixed(3)}</td><td class="n">${e.ch.toFixed(3)}</td><td>${e.via ? (e.via.startsWith('Av') ? e.via : 'vía arterial') : '—'}</td><td class="n">${e.resid}</td><td>${u ? `<span class="uso" style="background:${u[2]}">${u[1]}</span><div class="nota" style="margin-top:3px">${u[4]}</div>` : '<span class="nota">entrada peatonal general</span>'}</td></tr>`; }).join('');
+
+/* ---------- recomendaciones ---------- */
+const m = asign.mer, cp = asign.cmp, co = asign.coc, go = asign.gob, bo = asign.bos;
+const REC = [
+  ['#c2652a', `Mercado en la entrada ${m.i}`, `Tiene la elección más alta de las entradas (${m.ch.toFixed(3)}) y alcance de ciudad ${m.rn.toFixed(3)}${m.via ? ', sobre ' + (m.via.startsWith('Av') ? m.via : 'una vía arterial') : ''}. El mercado vive del paso de gente: aquí la gente ya pasa, y de aquí sale la cosecha hacia afuera.`],
+  ['#e3a64a', `Compostaje con acceso por la entrada ${cp.i}`, `${cp.via ? 'Llega desde ' + (cp.via.startsWith('Av') ? cp.via : 'una vía arterial') + ', así los camiones de Corabastos (5 t/día) no cruzan los barrios' : 'Es la que menos calles residenciales toca'}; tiene ${cp.resid} calles residenciales a menos de 70 m. Las pilas van hacia adentro del predio, no contra las casas.`],
+  ['#d98b6a', `Cocina comunitaria en la entrada ${co.i}`, `Integración local ${co.r8.toFixed(3)} y ${co.resid} calles residenciales al lado: es la puerta de los vecinos. La cocina tiene que quedar a la mano de las familias que la usan cada día.`],
+  ['#e58aa8', `Casa de la asamblea en la entrada ${go.i}`, `Combina integración local (${go.r8.toFixed(3)}) con cercanía a las casas. El consejo federal debe estar donde cualquier vecina llega caminando y lo encuentra sin buscar: si queda escondido, la rotación de vocería pierde gente.`],
+  ['#4f8a3c', `Bosque por la entrada ${bo.i}`, `Es de las de menor elección (${bo.ch.toFixed(3)}): poca gente la usa de paso. El bosque necesita calma para las aves; su entrada debe ser peatonal y los pasajes de la espina no deben atravesar el núcleo del bosque.`],
+  ['#5fb3d9', `Abrir más el lado ${peor.k}`, `Es el lado que queda más segregado después de abrir (Rn ${peor.bRn.toFixed(3)}). Los barrios de ese lado están pegados al predio pero el muro los deja de espaldas. Más puertas y pasajes hacia ese lado convierten a esos vecinos en usuarios diarios y en miembros de las asambleas.`],
+  ['#8fc46a', `La inteligibilidad sube ${sg(pct(A6.inteligibilidad, D6.inteligibilidad))}`, `Abrir el predio hace el barrio más fácil de entender (inteligibilidad ${A6.inteligibilidad} → ${D6.inteligibilidad}), aunque el valor sigue siendo bajo: la trama es confusa. Señalización, ejes visuales claros desde las entradas ${m.i} y ${go.i} y una plaza central reconocible ayudan más que más metros de pasaje.`],
+  ['#a98bd6', 'No reordena la ciudad, abre un centro', `A escala de ciudad el cambio es mínimo (Rn ${AT.nain} → ${DT.nain}). Bavaria Común no compite con Corabastos ni con las avenidas: es un centro de barrio. Por eso su éxito depende de la red de actores (ver el modelo causal), no solo de la forma.`],
+];
+$('#rec').innerHTML = REC.map(([c, t, d]) => `<div style="--c:${c}"><b>${t}</b><p>${d}</p></div>`).join('');
+$('#fuente').textContent = 'Fuente: ' + D.fuente + '. Integración Rn y 800 m = NAIN; elección = NACH (Hillier et al. 2012). Los puntajes de uso por entrada son criterios de diseño propuestos aquí para discutir.';
+})();
+</script>
+</body>
+</html>
