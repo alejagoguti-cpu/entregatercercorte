@@ -2,22 +2,23 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="color-scheme" content="dark">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Red de Actores Kennedy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--paper:#f3efe8;--ink:#2b2622;--mute:#7b726a;--line:#1d1a17}
+:root{--paper:#000000;--ink:#ece6dc;--mute:#9a9086;--line:#f2ece4}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--paper);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif}
-#bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid #ddd5ca;background:#efe9e0}
+#bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid #262626;background:#0b0b0b}
 #bar b{font-family:"Playfair Display",Georgia,serif;font-weight:600;font-size:15px;margin-right:auto}
-#bar a,#bar button{font:600 12px "Source Sans 3",sans-serif;padding:6px 11px;border-radius:7px;border:1px solid #cfc5b8;background:#fbf8f3;color:var(--ink);cursor:pointer;text-decoration:none}
-#bar button.on{background:var(--ink);color:#fbf8f3;border-color:var(--ink)}
+#bar a,#bar button{font:600 12px "Source Sans 3",sans-serif;padding:6px 11px;border-radius:7px;border:1px solid #3a3a3a;background:#141414;color:var(--ink);cursor:pointer;text-decoration:none}
+#bar button.on{background:var(--ink);color:#141414;border-color:var(--ink)}
 #wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 #lam{display:block;width:100%;min-width:1100px;height:auto}
-#tip{position:fixed;pointer-events:none;z-index:9;max-width:280px;padding:9px 11px;border-radius:8px;background:rgba(255,253,249,.97);border:1px solid #d6ccbf;box-shadow:0 8px 24px rgba(40,30,20,.18);font-size:12.5px;line-height:1.35;display:none}
+#tip{position:fixed;pointer-events:none;z-index:9;max-width:280px;padding:9px 11px;border-radius:8px;background:rgba(14,14,14,.96);border:1px solid #3a3a3a;box-shadow:0 8px 24px rgba(0,0,0,.6);font-size:12.5px;line-height:1.35;display:none}
 #tip h5{margin:0 0 3px;font:600 14px "Playfair Display",Georgia,serif}
 #tip .k{display:inline-block;padding:1px 6px;border-radius:5px;color:#fff;font-size:10.5px;font-weight:700;margin:2px 4px 3px 0}
 #tip small{color:var(--mute);display:block;margin-top:4px}
@@ -72,23 +73,23 @@ for (const k of ORDEN) {
 }
 function mix(a, b, t) { const h = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16)); const x = h(a), y = h(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
 
-el('rect', { x: 0, y: 0, width: W, height: H, fill: '#f3efe8' });
+el('rect', { x: 0, y: 0, width: W, height: H, fill: '#000000' });
 
 /* ---------- Cartografía ---------- */
 const map = el('g', { mask: 'url(#fadeM)' });
 const kPath = dPath(B.limite, true);
-for (const p of B.parques) el('path', { d: dPath(p.p, true), fill: '#dfe3cf', stroke: 'none' }, map);
-el('path', { d: kPath, fill: '#ebe4d8', stroke: 'none' }, map);
-for (const p of B.parques) el('path', { d: dPath(p.p, true), fill: '#d8dfc4', stroke: 'none' }, map);
-el('path', { d: dPath(B.bavaria, true), fill: '#cfd9bb', stroke: '#7d9a62', 'stroke-width': .8, 'stroke-dasharray': '3 2' }, map);
-el('path', { d: dPath(B.corabastos, true), fill: '#ead3bd', stroke: '#c2925f', 'stroke-width': .8 }, map);
-for (const v of B.vias) el('path', { d: dPath(v.p), fill: 'none', stroke: '#fbf8f2', 'stroke-width': 2.4, 'stroke-linecap': 'round' }, map);
-for (const v of B.vias) el('path', { d: dPath(v.p), fill: 'none', stroke: '#cbbfae', 'stroke-width': .7 }, map);
+for (const p of B.parques) el('path', { d: dPath(p.p, true), fill: '#0f170d', stroke: 'none' }, map);
+el('path', { d: kPath, fill: '#131210', stroke: 'none' }, map);
+for (const p of B.parques) el('path', { d: dPath(p.p, true), fill: '#142010', stroke: 'none' }, map);
+el('path', { d: dPath(B.bavaria, true), fill: '#1b2a14', stroke: '#7d9a62', 'stroke-width': .8, 'stroke-dasharray': '3 2' }, map);
+el('path', { d: dPath(B.corabastos, true), fill: '#2c1d10', stroke: '#c2925f', 'stroke-width': .8 }, map);
+for (const v of B.vias) el('path', { d: dPath(v.p), fill: 'none', stroke: '#2b2825', 'stroke-width': 2.4, 'stroke-linecap': 'round' }, map);
+for (const v of B.vias) el('path', { d: dPath(v.p), fill: 'none', stroke: '#554e46', 'stroke-width': .7 }, map);
 for (const w of B.agua) {
   const area = /Humedal|Laguna|Lago|Pondaje/.test(w.t);
-  el('path', { d: dPath(w.p, area), fill: area ? '#bfd6dc' : 'none', stroke: '#8fb5c0', 'stroke-width': area ? .6 : 1 }, map);
+  el('path', { d: dPath(w.p, area), fill: area ? '#10343f' : 'none', stroke: '#2f7486', 'stroke-width': area ? .6 : 1 }, map);
 }
-for (const r of B.rios) el('path', { d: dPath(r.p), fill: 'none', stroke: '#86afbd', 'stroke-width': 2.2, 'stroke-linecap': 'round' }, map);
+for (const r of B.rios) el('path', { d: dPath(r.p), fill: 'none', stroke: '#3489a0', 'stroke-width': 2.2, 'stroke-linecap': 'round' }, map);
 el('path', { d: kPath, fill: 'none', stroke: '#8a7d6e', 'stroke-width': 1.1, 'stroke-dasharray': '5 3' }, map);
 
 // Rótulos de lugares
@@ -97,15 +98,15 @@ const RT = [['Río Fucha', -74.1205, 4.6125, -38], ['Río Fucha', -74.1505, 4.66
   ['Av. Boyacá', -74.1425, 4.5995, -72], ['Av. Américas', -74.1735, 4.6395, -26], ['KENNEDY', -74.1685, 4.6175, 0], ['Río Bogotá', -74.2000, 4.6430, -60], ['Río Tunjuelo', -74.1610, 4.5955, -10]];
 for (const [t, lng, lat, rot] of RT) {
   const [x, y] = P(lng, lat), cap = t === 'KENNEDY';
-  el('text', { x, y, transform: `rotate(${rot} ${x} ${y})`, 'text-anchor': 'middle', class: cap ? '' : 'serif', 'font-size': cap ? 13 : 11, 'font-style': cap ? 'normal' : 'italic', 'letter-spacing': cap ? 5 : 0, fill: cap ? '#a3968a' : (/Río|Humedal/.test(t) ? '#4f8494' : '#8c7f72'), 'font-weight': cap ? 600 : 400 }, map, t);
+  el('text', { x, y, transform: `rotate(${rot} ${x} ${y})`, 'text-anchor': 'middle', class: cap ? '' : 'serif', 'font-size': cap ? 13 : 11, 'font-style': cap ? 'normal' : 'italic', 'letter-spacing': cap ? 5 : 0, fill: cap ? '#a3968a' : (/Río|Humedal/.test(t) ? '#62b0c6' : '#a0958a'), 'font-weight': cap ? 600 : 400 }, map, t);
 }
 // Norte y escala
 { const [x, y] = [1135, 520];
-  el('path', { d: `M${x} ${y - 22}L${x - 6} ${y - 4}L${x} ${y - 8}L${x + 6} ${y - 4}Z`, fill: '#6f655b' });
-  el('text', { x, y: y + 9, 'text-anchor': 'middle', 'font-size': 11, fill: '#6f655b', 'font-weight': 700 }, svg, 'N');
+  el('path', { d: `M${x} ${y - 22}L${x - 6} ${y - 4}L${x} ${y - 8}L${x + 6} ${y - 4}Z`, fill: '#a59b90' });
+  el('text', { x, y: y + 9, 'text-anchor': 'middle', 'font-size': 11, fill: '#a59b90', 'font-weight': 700 }, svg, 'N');
   const px1km = 1000 * S, x0 = 1060;
-  el('path', { d: `M${x0} ${y + 30}h${px1km}M${x0} ${y + 26}v8M${x0 + px1km} ${y + 26}v8M${x0 + px1km / 2} ${y + 28}v4`, stroke: '#6f655b', 'stroke-width': 1, fill: 'none' });
-  el('text', { x: x0 + px1km / 2, y: y + 44, 'text-anchor': 'middle', 'font-size': 10, fill: '#6f655b' }, svg, '1 km');
+  el('path', { d: `M${x0} ${y + 30}h${px1km}M${x0} ${y + 26}v8M${x0 + px1km} ${y + 26}v8M${x0 + px1km / 2} ${y + 28}v4`, stroke: '#a59b90', 'stroke-width': 1, fill: 'none' });
+  el('text', { x: x0 + px1km / 2, y: y + 44, 'text-anchor': 'middle', 'font-size': 10, fill: '#a59b90' }, svg, '1 km');
 }
 
 /* ---------- Grafo: grado (métrica de conectividad) ---------- */
@@ -151,7 +152,7 @@ A.actores.forEach(a => {
 });
 
 /* ---------- Eje horizontal ---------- */
-el('rect', { x: 30, y: BASE - 2.5, width: W - 60, height: 5, fill: '#1d1a17' });
+el('rect', { x: 30, y: BASE - 2.5, width: W - 60, height: 5, fill: '#f2ece4' });
 
 /* ---------- Plomadas, burbujas y rótulos ---------- */
 const gB = el('g');
@@ -163,10 +164,10 @@ grupos.forEach(G => {
     // métrica de conectividad sobre la plomada, como la profundidad en la referencia
     const ty = BASE + 16;
     el('text', { x: a.bx - 3, y: ty, transform: `rotate(-90 ${a.bx - 3} ${ty})`, 'text-anchor': 'end', 'font-size': 9, fill: '#8a7f74' }, g, a.k + ' vínc.');
-    el('circle', { cx: a.bx, cy: a.by, r: a.r, fill: `url(#b${G.k})`, stroke: a.hub ? '#1d1a17' : '#fffaf2', 'stroke-width': a.hub ? 1.6 : 1 }, g);
+    el('circle', { cx: a.bx, cy: a.by, r: a.r, fill: `url(#b${G.k})`, stroke: a.hub ? '#f2ece4' : '#000000', 'stroke-width': a.hub ? 1.6 : 1 }, g);
     el('text', { x: a.bx, y: a.by + (a.hub ? 5 : 3.5), 'text-anchor': 'middle', 'font-size': a.hub ? 14 : 10, 'font-weight': 700, fill: '#fff' }, g, a.k);
     const lines = wrap(a.n, a.hub ? 16 : 13);
-    const t = el('text', { x: a.bx, y: a.by + a.r + 12, 'text-anchor': 'middle', 'font-size': a.hub ? 11.5 : 9.5, 'font-weight': a.hub ? 700 : 600, fill: '#3a332d', class: a.hub ? 'serif' : '' }, g);
+    const t = el('text', { x: a.bx, y: a.by + a.r + 12, 'text-anchor': 'middle', 'font-size': a.hub ? 11.5 : 9.5, 'font-weight': a.hub ? 700 : 600, fill: '#d9d1c6', class: a.hub ? 'serif' : '' }, g);
     lines.forEach((s, i) => el('tspan', { x: a.bx, dy: i ? (a.hub ? 13 : 11) : 0 }, t, s));
   });
   // etiqueta del grupo, como los años en la referencia
@@ -181,14 +182,14 @@ const gPin = el('g');
 A.actores.forEach(a => {
   const g = el('g', { class: 'fade act', 'data-id': a.id }, gPin);
   if (a.hub) el('circle', { cx: a.px, cy: a.py, r: 9, fill: 'none', stroke: COM[a.com].c, 'stroke-width': 1.3 }, g);
-  el('circle', { cx: a.px, cy: a.py, r: a.hub ? 5.5 : 3.6, fill: COM[a.com].c, stroke: '#fffaf2', 'stroke-width': 1 }, g);
+  el('circle', { cx: a.px, cy: a.py, r: a.hub ? 5.5 : 3.6, fill: COM[a.com].c, stroke: '#000000', 'stroke-width': 1 }, g);
 });
 
 /* ---------- Título y texto (arriba a la izquierda) ---------- */
-el('text', { x: 40, y: 78, class: 'serif', 'font-size': 44, fill: '#1d1a17' }, svg, 'Red de Actores');
-el('text', { x: 40, y: 122, class: 'serif', 'font-size': 44, fill: '#1d1a17' }, svg, 'Kennedy');
-para(40, 160, 'Mapeo relacional entre la base comunitaria territorial y las dinámicas biofísicas de Kennedy. Cada arco conecta la localización real del actor en el mapa (arriba) con su tipología operativa en el eje (abajo).', 15, 16.5, 'serif', '#2b2622', 340);
-para(40, 285, `Modelo de soberanía alimentaria y regeneración urbana: 5 hubs articuladores y ${A.actores.length - 5} nodos clave, con ${RELS.length} vínculos sociales, económicos y ecológicos. El número y el tamaño de cada burbuja indican su conectividad (vínculos).`, 12, 15, '', '#4d453e', 330);
+el('text', { x: 40, y: 78, class: 'serif', 'font-size': 44, fill: '#f2ece4' }, svg, 'Red de Actores');
+el('text', { x: 40, y: 122, class: 'serif', 'font-size': 44, fill: '#f2ece4' }, svg, 'Kennedy');
+para(40, 160, 'Mapeo relacional entre la base comunitaria territorial y las dinámicas biofísicas de Kennedy. Cada arco conecta la localización real del actor en el mapa (arriba) con su tipología operativa en el eje (abajo).', 15, 16.5, 'serif', '#e6dfd5', 340);
+para(40, 285, `Modelo de soberanía alimentaria y regeneración urbana: 5 hubs articuladores y ${A.actores.length - 5} nodos clave, con ${RELS.length} vínculos sociales, económicos y ecológicos. El número y el tamaño de cada burbuja indican su conectividad (vínculos).`, 12, 15, '', '#bdb3a8', 330);
 function para(x, y, s, fs, lh, cls, fill, maxW) {
   const t = el('text', { x, y, 'font-size': fs, fill, class: cls }); const per = Math.floor(maxW / (fs * .5)); wrap2(s, per).forEach((l, i) => el('tspan', { x, dy: i ? lh : 0 }, t, l));
 }
@@ -199,32 +200,32 @@ const filtro = { com: new Set(), dim: new Set() };
 {
   const lx = 1250, ly = 40;
   // esquema de lectura
-  el('text', { x: lx, y: ly, 'font-size': 11, 'font-weight': 700, fill: '#4d453e' }, svg, 'Cómo leer');
+  el('text', { x: lx, y: ly, 'font-size': 11, 'font-weight': 700, fill: '#bdb3a8' }, svg, 'Cómo leer');
   el('circle', { cx: lx + 8, cy: ly + 22, r: 3.6, fill: '#8a7f74' });
-  el('text', { x: lx + 20, y: ly + 26, 'font-size': 10.5, fill: '#4d453e' }, svg, 'ubicación real (WGS84)');
+  el('text', { x: lx + 20, y: ly + 26, 'font-size': 10.5, fill: '#bdb3a8' }, svg, 'ubicación real (WGS84)');
   el('path', { d: `M${lx + 8} ${ly + 26}C${lx + 8} ${ly + 50} ${lx + 30} ${ly + 40} ${lx + 30} ${ly + 62}`, stroke: '#8a7f74', fill: 'none' });
-  el('text', { x: lx + 40, y: ly + 50, 'font-size': 10.5, fill: '#4d453e' }, svg, 'color del arco: dimensión');
-  el('rect', { x: lx + 14, y: ly + 61, width: 34, height: 3, fill: '#1d1a17' });
+  el('text', { x: lx + 40, y: ly + 50, 'font-size': 10.5, fill: '#bdb3a8' }, svg, 'color del arco: dimensión');
+  el('rect', { x: lx + 14, y: ly + 61, width: 34, height: 3, fill: '#f2ece4' });
   el('line', { x1: lx + 30, y1: ly + 64, x2: lx + 30, y2: ly + 80, stroke: '#8a7f74', 'stroke-dasharray': '3 3' });
-  el('text', { x: lx + 40, y: ly + 76, 'font-size': 10.5, fill: '#4d453e' }, svg, 'plomada: actor en el eje');
-  el('circle', { cx: lx + 30, cy: ly + 92, r: 11, fill: '#bcb2a6' });
+  el('text', { x: lx + 40, y: ly + 76, 'font-size': 10.5, fill: '#bdb3a8' }, svg, 'plomada: actor en el eje');
+  el('circle', { cx: lx + 30, cy: ly + 92, r: 11, fill: '#5a534c' });
   el('circle', { cx: lx + 30 + 0, cy: ly + 92, r: 0 });
-  el('text', { x: lx + 48, y: ly + 96, 'font-size': 10.5, fill: '#4d453e' }, svg, 'burbuja grande = hub · mediana = nodo');
+  el('text', { x: lx + 48, y: ly + 96, 'font-size': 10.5, fill: '#bdb3a8' }, svg, 'burbuja grande = hub · mediana = nodo');
 
-  el('text', { x: lx, y: ly + 130, 'font-size': 11, 'font-weight': 700, fill: '#4d453e' }, svg, 'Comunidades (color de burbuja)');
+  el('text', { x: lx, y: ly + 130, 'font-size': 11, 'font-weight': 700, fill: '#bdb3a8' }, svg, 'Comunidades (color de burbuja)');
   ORDEN.forEach((k, i) => {
     const g = el('g', { class: 'leg', 'data-com': k }); const y = ly + 148 + i * 18;
     el('circle', { cx: lx + 7, cy: y - 4, r: 6, fill: `url(#b${k})` }, g);
-    el('text', { x: lx + 20, y, 'font-size': 11, fill: '#2b2622' }, g, COM[k].n);
+    el('text', { x: lx + 20, y, 'font-size': 11, fill: '#e6dfd5' }, g, COM[k].n);
     el('rect', { x: lx - 4, y: y - 13, width: 300, height: 17, fill: 'transparent' }, g);
     el('title', {}, g, COM[k].d);
     g.onclick = () => toggle('com', k, g);
   });
-  el('text', { x: lx, y: ly + 255, 'font-size': 11, 'font-weight': 700, fill: '#4d453e' }, svg, 'Dimensiones de vínculo (color de arco)');
+  el('text', { x: lx, y: ly + 255, 'font-size': 11, 'font-weight': 700, fill: '#bdb3a8' }, svg, 'Dimensiones de vínculo (color de arco)');
   Object.entries(DIM).forEach(([k, d], i) => {
     const g = el('g', { class: 'leg', 'data-dim': k }); const y = ly + 274 + i * 18;
     el('line', { x1: lx, y1: y - 4, x2: lx + 16, y2: y - 4, stroke: d.c, 'stroke-width': 3 }, g);
-    el('text', { x: lx + 22, y, 'font-size': 11, fill: '#2b2622' }, g, `${k} · ${d.n}: ${d.d}`);
+    el('text', { x: lx + 22, y, 'font-size': 11, fill: '#e6dfd5' }, g, `${k} · ${d.n}: ${d.d}`);
     el('rect', { x: lx - 4, y: y - 13, width: 330, height: 17, fill: 'transparent' }, g);
     g.onclick = () => toggle('dim', k, g);
   });

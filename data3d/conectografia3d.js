@@ -101,6 +101,10 @@ export async function iniciarConectografia({ THREE, T3, llw, Y0 = 2.0 }) {
   const lPin = new THREE.LineSegments(geoPin, matPin); lPin.frustumCulled = false; lPin.renderOrder = 58; grupo.add(lPin);
   const disco = new THREE.RingGeometry(0.55, 1, 40); disco.rotateX(-Math.PI / 2);
   const DISCOS = A.map(a => { const m = new THREE.Mesh(disco, new THREE.MeshBasicMaterial({ fog: false, color: COM[a.com].c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); m.position.set(PG[a.i].x, Y0 + 3, PG[a.i].z); m.scale.setScalar(a.hub ? 90 : 45); m.renderOrder = 57; grupo.add(m); return m; });
+  // velo negro sobre el suelo: el territorio queda oscuro y la red resalta (los edificios siguen encima)
+  const velo = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .78, depthWrite: false, fog: false }));
+  velo.rotation.x = -Math.PI / 2; velo.position.set(cx, Y0 + 0.8, cz); velo.renderOrder = 10; grupo.add(velo);
+  let fondoNegro = true;
   // pulsos que viajan por las conexiones directas
   const NPU = REL.length * 2, pulG = new THREE.BufferGeometry();
   pulG.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(NPU * 3), 3));
@@ -224,12 +228,13 @@ export async function iniciarConectografia({ THREE, T3, llw, Y0 = 2.0 }) {
   pan.querySelectorAll('[data-com]').forEach(c => c.onclick = () => { const k = c.dataset.com; comOff.has(k) ? comOff.delete(k) : comOff.add(k); recalcular(); });
   pan.querySelectorAll('[data-dim]').forEach(c => c.onclick = () => { const k = c.dataset.dim; dimOff.has(k) ? dimOff.delete(k) : dimOff.add(k); recalcular(); });
   function pintarCon() {
-    $('#cg-con').innerHTML = `<span class="chip ${verDir ? '' : 'off'}" data-c="dir"><i class="ln" style="background:#e2e8f0;height:3px"></i>Directas</span><span class="chip ${verInd ? '' : 'off'}" data-c="ind"><i class="ln" style="background:repeating-linear-gradient(90deg,#e2e8f0 0 3px,transparent 3px 6px)"></i>Indirectas (2 pasos)</span><span class="chip" data-c="nom">🏷️ Nombres: ${nombres}</span>${off.size ? `<span class="chip" data-c="on">💡 Encender todos (${off.size})</span>` : ''}`;
+    $('#cg-con').innerHTML = `<span class="chip ${verDir ? '' : 'off'}" data-c="dir"><i class="ln" style="background:#e2e8f0;height:3px"></i>Directas</span><span class="chip ${verInd ? '' : 'off'}" data-c="ind"><i class="ln" style="background:repeating-linear-gradient(90deg,#e2e8f0 0 3px,transparent 3px 6px)"></i>Indirectas (2 pasos)</span><span class="chip ${fondoNegro ? '' : 'off'}" data-c="neg">🌑 Fondo negro</span><span class="chip" data-c="nom">🏷️ Nombres: ${nombres}</span>${off.size ? `<span class="chip" data-c="on">💡 Encender todos (${off.size})</span>` : ''}`;
     pan.querySelectorAll('[data-c]').forEach(c => c.onclick = () => {
       const k = c.dataset.c;
       if (k === 'dir') verDir = !verDir; else if (k === 'ind') verInd = !verInd;
       else if (k === 'nom') nombres = nombres === 'hubs' ? 'todos' : nombres === 'todos' ? 'ninguno' : 'hubs';
       else if (k === 'on') off.clear();
+      else if (k === 'neg') { fondoNegro = !fondoNegro; velo.visible = fondoNegro; }
       recalcular();
     });
   }
@@ -271,11 +276,30 @@ export async function iniciarConectografia({ THREE, T3, llw, Y0 = 2.0 }) {
   function vistaFase(f) { if (f === 0) volar(CEN, 3500, 1100); else volar(new THREE.Vector3(cx, Y0 + 200, cz + 200), 3900, 3100, -0.35); }
   function enfocar(id) { const i = byId[id].i; volar(PS[i].clone(), 900, 420); }
   function irFase(f) { faseObj = f; vistaFase(f); dirty = true; pintarPanel(); }
-  let niebla = null;
+  /* fondo negro mientras la red está abierta: cielo oculto, fondo y niebla negros (la niebla, más tenue).
+     Se aplica justo antes de cada render y se deshace después, así el ciclo de 24 h del cielo (cielo.js) no se pisa. */
+  const NEGRO = new THREE.Color(0x000000), guard = { bg: new THREE.Color(), fog: new THREE.Color(), dens: 0, cielo: [] };
+  const cielos = () => T3.scene.children.filter(o => o.isMesh && o.material && o.material.isShaderMaterial && o.material.side === THREE.BackSide);
+  const sc = T3.scene, antes = sc.onBeforeRender, despues = sc.onAfterRender;
+  sc.onBeforeRender = function (...a) {
+    antes && antes.apply(this, a);
+    if (!grupo.visible || !fondoNegro) return;
+    guard.on = true;
+    if (sc.background && sc.background.isColor) { guard.bg.copy(sc.background); sc.background.copy(NEGRO); }
+    if (sc.fog) { guard.fog.copy(sc.fog.color); sc.fog.color.copy(NEGRO); if (sc.fog.density != null) { guard.dens = sc.fog.density; sc.fog.density *= 0.35; } }
+    guard.cielo = cielos().filter(o => o.visible); guard.cielo.forEach(o => o.visible = false);
+  };
+  sc.onAfterRender = function (...a) {
+    if (guard.on) {
+      guard.on = false;
+      if (sc.background && sc.background.isColor) sc.background.copy(guard.bg);
+      if (sc.fog) { sc.fog.color.copy(guard.fog); if (sc.fog.density != null) sc.fog.density = guard.dens; }
+      guard.cielo.forEach(o => o.visible = true);
+    }
+    despues && despues.apply(this, a);
+  };
   function abrir(on) {
     grupo.visible = on; pan.classList.toggle('on', on); btn.classList.toggle('on', on);
-    const fog = T3.scene.fog; // la niebla del visor borra la red a varios km: se aclara mientras está abierta
-    if (fog && fog.density != null) { if (on && niebla == null) { niebla = fog.density; fog.density = niebla * 0.3; } else if (!on && niebla != null) { fog.density = niebla; niebla = null; } }
     if (!on) { ETQ.forEach(e => e.style.display = 'none'); return; }
     dirty = true; vistaFase(faseObj);
   }
