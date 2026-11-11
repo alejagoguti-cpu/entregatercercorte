@@ -3066,7 +3066,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
     .then(async ([m, me, mRed]) => {
       const redUI = await mRed.iniciarRedActoresUI({ T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 });
       window.MOSTRAR_RED_ACTORES = (id) => redUI.mostrarRedActores(id);
-      import('./data3d/conectografia3d.js?v=3').then(mc => mc.iniciarConectografia({ THREE: T3.THREE, T3, Y0: 2.0, llw: (lng, lat) => lw((lng - GEO.LNG0) * MXg - GEO.EX, (lat - GEO.LAT0) * MYg - GEO.EY) })).then(cg => { window.CONECTOGRAFIA = cg; }).catch(e => console.warn('conectografía:', e));
+      import('./data3d/conectografia3d.js?v=4').then(mc => mc.iniciarConectografia({ THREE: T3.THREE, T3, Y0: 2.0, llw: (lng, lat) => lw((lng - GEO.LNG0) * MXg - GEO.EX, (lat - GEO.LAT0) * MYg - GEO.EY) })).then(cg => { window.CONECTOGRAFIA = cg; }).catch(e => console.warn('conectografía:', e));
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0 }); } catch (e) { console.warn('estrategias:', e); }
       let PLAN = null; // E1 Bavaria Común: plan maestro de la antigua fábrica (data3d/bavaria_plan.js)
       try { PLAN = await (await import('./data3d/bavaria_plan.js?v=1')).iniciarPlanBavaria({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 }); T3.planBavaria = PLAN; } catch (e) { console.warn('plan Bavaria:', e); }

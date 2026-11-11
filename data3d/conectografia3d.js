@@ -218,8 +218,10 @@ export async function iniciarConectografia({ THREE, T3, llw, Y0 = 2.0 }) {
 <div class="sec"><div class="t">Comunidades (color del nodo)</div><div class="chips" id="cg-com"></div></div>
 <div class="sec"><div class="t">Dimensiones (color de la conexión)</div><div class="chips" id="cg-dim"></div></div>
 <div class="sec" id="cg-ficha"></div>
-<div class="sec ayuda">Clic en un nodo: ver sus conexiones · <b>doble clic: apagar / encender</b> · clic en el vacío: soltar.<br>Arrastra para girar. <a href="red_georef.html" target="_blank">Lámina 2D para imprimir ↗</a></div>`;
+<div class="sec ayuda">Clic en un nodo: ver sus conexiones · <b>doble clic: apagar / encender</b> · clic en el vacío: soltar.<br>Arrastra para girar. <a href="red_georef.html" target="_blank">Lámina 2D para imprimir ↗</a></div>
+<div class="sec"><button class="b on" id="cg-modelo" style="width:100%">🔁 Modelo causal · sub-red · asambleas ↗</button><div class="ayuda" style="margin-top:5px">Abre el modelo dinámico (tipo Vensim) con los actores que tengas encendidos aquí.</div></div>`;
   const $ = s => pan.querySelector(s);
+  pan.querySelector('#cg-modelo').onclick = () => open('modelo_causal.html?off=' + [...off].join(',') + '&com=' + [...comOff].join(','), '_blank');
   $('.x').onclick = () => abrir(false);
   btn.onclick = () => abrir(!grupo.visible);
   pan.querySelectorAll('#cg-fase .b').forEach(b => b.onclick = () => irFase(+b.dataset.f));

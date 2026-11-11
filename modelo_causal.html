@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Modelo Causal Bavaria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--bg2:#0b1015;--panel:#0d131a;--line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);--tx:#e6ecf0;--mu:#8b9aa7;--mu2:#5f6e7a;--amb:#e3a64a;--verde:#8fc46a;--agua:#5fb3d9;--rojo:#e0664f;--lila:#a98bd6;--rosa:#e58aa8;--tierra:#b98a57;--mono:"JetBrains Mono",ui-monospace,monospace;--sans:"Space Grotesk",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans)}
+a{color:var(--amb)}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:14px 18px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:19px;font-weight:600;letter-spacing:-.01em}
+header h1 small{display:block;font:400 11.5px var(--mono);color:var(--mu);letter-spacing:.02em;margin-top:2px}
+header nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:600 12px var(--sans);padding:7px 12px;border-radius:8px;border:1px solid var(--line2);background:var(--bg2);color:var(--tx);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--amb)}
+.btn.on{background:var(--amb);color:#1a1204;border-color:transparent}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0;min-height:calc(100vh - 62px)}
+#izq{min-width:0;border-right:1px solid var(--line)}
+#der{padding:14px 16px 30px;overflow:auto;max-height:calc(100vh - 62px);position:sticky;top:0}
+.tabs{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.vista{display:none}.vista.on{display:block}
+#diag{display:block;width:100%;height:auto;background:var(--bg)}
+#reloj{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#reloj input[type=range]{flex:1;min-width:160px;accent-color:var(--amb)}
+#t{font:600 13px var(--mono);color:var(--amb);min-width:150px}
+#graf{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;padding:14px 16px}
+.g{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 10px 6px}
+.g h3{margin:0 0 2px;font-size:12.5px;font-weight:600}
+.g p{margin:0 0 4px;font:400 10.5px var(--mono);color:var(--mu)}
+.g svg{width:100%;height:auto;display:block}
+h2{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin:18px 0 8px;display:flex;justify-content:space-between}
+h2:first-child{margin-top:0}
+.par{margin:8px 0 10px}
+.par label{display:flex;justify-content:space-between;font-size:12px;color:var(--tx)}
+.par label b{font:600 11.5px var(--mono);color:var(--amb)}
+.par input{width:100%;accent-color:var(--amb)}
+.par small{display:block;font:400 10px var(--mono);color:var(--mu2)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;border:1px solid var(--line2);font-size:11px;cursor:pointer;user-select:none;background:var(--bg2)}
+.chip i{width:9px;height:9px;border-radius:50%;flex:none}
+.chip.off{opacity:.32;text-decoration:line-through}
+.fuerza{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.fuerza div{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center}
+.fuerza b{display:block;font:600 15px var(--mono)}
+.fuerza span{font-size:10px;color:var(--mu)}
+.esc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.nota{font:400 10.5px/1.45 var(--mono);color:var(--mu)}
+#ecu{padding:16px 20px 30px;font:400 12px/1.6 var(--mono);color:#cfd8de;white-space:pre-wrap;overflow:auto}
+#ecu .h{color:var(--amb);font-weight:600}
+#ecu .c{color:var(--mu2)}
+#bucles{padding:14px 18px 30px}
+.bucle{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--bg2)}
+.bucle b{font:700 13px var(--mono)}
+.bucle p{margin:4px 0 0;font-size:12.5px;color:#cfd8de}
+.bucle code{font:400 11px var(--mono);color:var(--mu)}
+@media(max-width:900px){main{grid-template-columns:1fr}#der{position:static;max-height:none;border-top:1px solid var(--line)}#izq{border-right:0}#diagwrap{overflow-x:auto}#diag{min-width:820px}}
+/* diagrama */
+#diag text{font-family:var(--sans)}
+.st rect.box{fill:#0b1015;stroke:#e6ecf0;stroke-width:1.4}
+.st text.n{font-size:12.5px;font-weight:600;fill:#e6ecf0}
+.st text.v{font:600 11.5px var(--mono)}
+.aux text.n{font-size:11.5px;fill:#cfd8de}
+.aux text.v{font:400 10px var(--mono);fill:#8b9aa7}
+.pipe{fill:none;stroke-width:6;stroke-linecap:butt}
+.pipe2{fill:none;stroke:#000;stroke-width:3.2}
+.flujo{fill:none;stroke-width:2.4;stroke-dasharray:6 10}
+.lk{fill:none;stroke-width:1.15}
+.pol{font:700 13px var(--mono)}
+.loop text{font:700 13px var(--mono)}
+.loop .ln{font:400 9.5px var(--sans);fill:#8b9aa7}
+.red rect{fill:none;stroke-dasharray:3 3;stroke-width:1}
+.red text{font:600 10.5px var(--mono)}
+.hl{cursor:pointer}
+.det{padding:4px 16px 18px}.dh{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}.dh h3{margin:0;font-size:17px}.dh p{margin:3px 0 0;font-size:13px;color:#cfd8de}
+.pasos{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}.paso{flex:1 1 200px;max-width:260px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:10px;position:relative}.paso b{display:block;font-size:12.5px;margin:0 0 4px 26px}.paso p{margin:0 0 7px;font-size:11.5px;color:#cfd8de;line-height:1.4}.pn{position:absolute;left:9px;top:9px;width:20px;height:20px;border-radius:50%;color:#000;font:700 11px var(--mono);display:flex;align-items:center;justify-content:center}.fl{align-self:center;color:var(--mu);font-size:18px}
+.met4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.met4 div{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:8px;text-align:center}.met4 b{display:block;font:600 19px var(--mono);color:var(--amb)}.met4 span{font-size:10.5px;color:var(--mu)}
+.asawrap{display:grid;grid-template-columns:300px 1fr;gap:10px;padding:10px 16px;align-items:start}.asawrap svg{width:100%;height:auto;display:block}@media(max-width:900px){.asawrap{grid-template-columns:1fr}.met4{grid-template-columns:1fr 1fr}}
+.reglas{margin:0;padding-left:20px;font-size:12.5px;line-height:1.5;color:#cfd8de}.reglas li{margin-bottom:5px}.reglas b{color:var(--tx)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Modelo dinámico causal · Red de actores → Bavaria Común<small>stocks y flujos tipo Vensim · Kennedy, Bogotá · horizonte 10 años · paso 1 día</small></h1>
+  <nav>
+    <a class="btn" href="./?modo=kennedy">← Red 3D</a>
+    <a class="btn" href="red_georef.html">Lámina 2D</a>
+    <a class="btn" href="https://anasoficasca-code.github.io/simulador/bavaria.html" target="_blank">Proyecto Bavaria ↗</a>
+  </nav>
+</header>
+<main>
+<section id="izq">
+  <div class="tabs">
+    <button class="btn on" data-v="vDiag">Diagrama de stocks y flujos</button>
+    <button class="btn" data-v="vBuc">Ciclos causales</button>
+    <button class="btn" data-v="vSub">Sub-red Bavaria Común</button>
+    <button class="btn" data-v="vAsa">Asambleas rotativas</button>
+    <button class="btn" data-v="vEcu">Ecuaciones</button>
+  </div>
+  <div id="reloj">
+    <button class="btn" id="play">▶ Simular</button>
+    <input type="range" id="cursor" min="0" max="3650" value="3650">
+    <span id="t"></span>
+    <button class="btn" id="ref" title="Guarda la corrida actual como referencia (línea punteada en las gráficas)">Fijar referencia</button>
+  </div>
+  <div class="vista on" id="vDiag"><div id="diagwrap"><svg id="diag" viewBox="0 0 1200 690"></svg></div></div>
+  <div class="vista" id="vBuc"><div id="bucles"></div></div>
+  <div class="vista" id="vSub"><div id="sub"></div></div>
+  <div class="vista" id="vAsa"><div id="asa"></div></div>
+  <div class="vista" id="vEcu"><div id="ecu"></div></div>
+  <div id="graf"></div>
+</section>
+<aside id="der">
+  <h2>Escenario</h2>
+  <div class="esc">
+    <button class="btn" data-e="actual">Actual</button>
+    <button class="btn on" data-e="propuesta">Propuesta</button>
+    <button class="btn" data-e="sinred">Sin red</button>
+  </div>
+  <p class="nota">Actual: Decreto 364/2017, red débil. Propuesta: Bavaria Común con la red completa. Sin red: la propuesta física sin actores que la sostengan.</p>
+
+  <h2><span>Interacciones de la red</span><span id="nAct"></span></h2>
+  <p class="nota">Cada actor encendido aporta sus vínculos. La fuerza de cada dimensión es la fracción de sus vínculos directos que siguen activos. Toca un actor para apagarlo.</p>
+  <div class="fuerza" id="fuerzas"></div>
+  <div id="actores"></div>
+
+  <h2>Cómo se escoge la vocería</h2>
+  <div class="esc" id="metodos"><button class="btn on" data-m="sorteo">Sorteo rotativo</button><button class="btn" data-m="turno">Turno rotativo</button><button class="btn" data-m="unico">Líder único</button></div>
+  <h2>Parámetros</h2>
+  <div id="pars"></div>
+  <p class="nota">Fuentes: 40.320 hab. UPZ 113 (SDS 2021) · 0,8 kg/hab/día, 51 % orgánico (UAESP) · bancales 27.043 m², techos 26.098 m², 3.250 árboles (OSM, Esri) · rendimiento 3–8 kg/m²/año y meta de 200 g/persona/día (supuestos del proyecto). Los coeficientes de comportamiento (tasas de convocatoria, desgaste, efectos) son supuestos para discutir, no datos medidos.</p>
+</aside>
+</main>
+<script type="module">
+import { COMPONENTES, FLUJOS_COMP, ASAMBLEAS, REGLAS, rotacion, metricas } from './data3d/bavaria_comun.js?v=1';
+(async () => {
+const $ = s => document.querySelector(s), NS = 'http://www.w3.org/2000/svg';
+const D = await fetch('data3d/red_georef_actores.json').then(r => r.json());
+const COM = D.comunidades, DIMS = D.dimensiones, A = D.actores, byId = Object.fromEntries(A.map(a => [a.id, a]));
+const REL = [];
+A.forEach(a => { if (!a.hub) REL.push([a.id, 'H-' + a.com, a.dim]); });
+D.relaciones.forEach(r => REL.push(r));
+
+/* ---------- estado: actores apagados (también llegan desde la red 3D por ?off=) ---------- */
+const qs = new URLSearchParams(location.search);
+const off = new Set((qs.get('off') || '').split(',').filter(x => byId[x]));
+(qs.get('com') || '').split(',').filter(k => COM[k]).forEach(k => A.filter(a => a.com === k).forEach(a => off.add(a.id)));
+
+/* ---------- parámetros (deslizadores) ---------- */
+const PAR = [
+  ['pot', 'Participación potencial', '% de adultos', 1, 15, .5, 5],
+  ['conv', 'Tasa de convocatoria', '/año', .1, 2, .05, .8],
+  ['desg', 'Tiempo medio de permanencia', 'años', .5, 6, .25, 2.5],
+  ['sep', 'Meta de separación en la fuente', '%', 0, 80, 5, 60],
+  ['cor', 'Aporte orgánico de Corabastos', 't/día', 0, 20, .5, 5],
+  ['tcomp', 'Tiempo de compostaje', 'días', 30, 120, 5, 60],
+  ['cap', 'Capacidad de la planta de compostaje', 't/día', 2, 30, 1, 12],
+  ['rend', 'Rendimiento de los bancales', 'kg/m²/año', 3, 8, .25, 5.5],
+  ['techos', 'Techos productivos habilitados', '% de 26.098 m²', 0, 100, 5, 60],
+  ['m2p', 'Área que cuida un voluntario', 'm²/persona', 10, 120, 5, 45],
+  ['meses', 'Duración de cada vocería', 'meses', 3, 24, 1, 6],
+  ['pres', 'Presión de desarrollo sobre el bosque', '0 = Dec. 448 · 1 = Dec. 364', 0, 1, .05, .15],
+];
+const P0 = { ...Object.fromEntries(PAR.map(p => [p[0], p[6]])), metodo: 'sorteo' };
+const ESC = {
+  actual: { metodo: 'unico', meses: 24, pot: 2, conv: .3, desg: 1.5, sep: 15, cor: 0, tcomp: 90, cap: 3, rend: 4, techos: 0, m2p: 30, pres: .9, off: 'red-debil' },
+  propuesta: { ...P0, off: 'ninguno' },
+  sinred: { ...P0, off: 'todos' },
+};
+let par = { ...P0 };
+$('#pars').innerHTML = PAR.map(([k, n, u, mi, ma, st]) => `<div class="par"><label>${n}<b id="pv-${k}"></b></label><input type="range" id="p-${k}" min="${mi}" max="${ma}" step="${st}"><small>${u}</small></div>`).join('');
+PAR.forEach(([k]) => { const i = $('#p-' + k); i.oninput = () => { par[k] = +i.value; marcarEsc(null); correr(); }; });
+function pintarPars() { PAR.forEach(([k]) => { $('#p-' + k).value = par[k]; $('#pv-' + k).textContent = fmt(par[k]); }); }
+
+/* ---------- red → fuerzas ---------- */
+const on = id => !off.has(id);
+function fuerzas() {
+  const f = {};
+  for (const d of ['1', '2', '3']) { const rs = REL.filter(r => String(r[2]) === d); f[d] = rs.filter(r => on(r[0]) && on(r[1])).length / rs.length; }
+  const m = ids => ids.filter(on).length / ids.length;
+  return {
+    S: f['1'], E: f['2'], G: f['3'],
+    corab: on('H-PRO') ? 1 : 0,                       // Corabastos entrega su fracción orgánica
+    recic: m(['P04', 'I02', 'P05']),                 // recicladores, UAESP y compostaje: eficiencia de separación
+    gob: m(['H-INS', 'H-COM', 'I09', 'C06']),         // Alcaldía, Mesa comunitaria, Personería, Colectivo: gobernanza
+    siem: m(['H-ENT', 'I06', 'I01', 'C06', 'E07']),   // Bosque, Jardín Botánico, SDA, Colectivo, arbolado
+    form: m(['H-FOR', 'F05', 'F07', 'F08']),         // formación: sostiene la permanencia
+  };
+}
+function pintarActores() {
+  const F = fuerzas();
+  $('#fuerzas').innerHTML = [['S', '1', 'social'], ['E', '2', 'económica'], ['G', '3', 'ecológica']].map(([k, d, n]) => `<div><b style="color:${DIMS[d].c}">${Math.round(F[k] * 100)}%</b><span>${n}</span></div>`).join('');
+  $('#nAct').textContent = `${A.length - off.size}/${A.length}`;
+  $('#actores').innerHTML = Object.entries(COM).map(([k, c]) => {
+    const as = A.filter(a => a.com === k), todos = as.every(a => off.has(a.id));
+    return `<h2 style="margin:12px 0 5px"><span class="hl" data-com="${k}" style="color:${c.c}" title="Encender o apagar toda la comunidad">${c.n}</span><span>${as.filter(a => on(a.id)).length}/${as.length}</span></h2><div class="chips">${as.map(a => `<span class="chip ${off.has(a.id) ? 'off' : ''}" data-id="${a.id}" title="${a.d}"><i style="background:${c.c};${a.hub ? 'outline:2px solid #fff;outline-offset:1px' : ''}"></i>${a.n}</span>`).join('')}</div>`;
+  }).join('');
+  document.querySelectorAll('#actores .chip').forEach(c => c.onclick = () => { const id = c.dataset.id; off.has(id) ? off.delete(id) : off.add(id); marcarEsc(null); correr(); });
+  document.querySelectorAll('#actores [data-com]').forEach(c => c.onclick = () => { const as = A.filter(a => a.com === c.dataset.com), todos = as.every(a => off.has(a.id)); as.forEach(a => todos ? off.delete(a.id) : off.add(a.id)); marcarEsc(null); correr(); });
+}
+
+/* ---------- MODELO (Euler, dt = 1 día) ---------- */
+const POB = 40320, ADUL = POB * .7, KGHAB = .8, ORG = .51, AB = 27043, AT = 26098, T0 = 3250, DIAS = 3650;
+function simular(p, F) {
+  const Ppot = ADUL * p.pot / 100, Amax = AB + AT * p.techos / 100;
+  let P = ADUL * .002, R = 0, C = 0, Ar = 1500, T = T0, DJ = 0;
+  const out = { t: [], P: [], R: [], C: [], A: [], T: [], DJ: [], cos: [], aut: [], fl: [] };
+  for (let d = 0; d <= DIAS; d++) {
+    // auxiliares
+    const demanda = Ar * 3 / 365 / 1000;                          // t/día de compost que piden los bancales (3 kg/m²/año)
+    const usoB = Math.min(C / 20, demanda);                       // a bancales y techos
+    const uso = usoB + Math.max(0, C - 80) / 30;                  // + excedente a parques y Jardín Botánico
+    const suf = demanda > 0 ? usoB / demanda : 1;                  // suficiencia de compost 0-1
+    const cosecha = Ar * p.rend / 365 * (.55 + .45 * suf);        // kg/día
+    const aut = cosecha / (POB * .2);                             // autoabastecimiento (meta 200 g/persona/día)
+    const per = Math.floor(d / (p.meses * 30.42)) + 1;              // periodos de vocería transcurridos
+    const exVoc = p.metodo === 'unico' ? 6 : Math.min(6 * per, Math.max(6, P * .25)); // personas que han sido vocería
+    const lid = Math.min(1, exVoc / 60);                          // liderazgo distribuido (R4)
+    const calidad = Math.min(1, T / T0) * (.5 + .5 * F.G);        // calidad ambiental del bosque y su red
+    const efCos = 1 + 1.5 * Math.min(1, aut / .3);                // cosecha visible atrae gente   (R1)
+    const efAmb = .6 + .4 * calidad;                              // bosque sano atrae gente      (R3)
+    const capTrab = P * p.m2p;                                    // m² que puede cuidar la gente
+    const fracSep = p.sep / 100 * Math.min(1, P / Math.max(1, Ppot)) * (.35 + .65 * F.recic) * (.5 + .5 * F.E);
+    // flujos
+    const inc = Math.max(0, Ppot - P) * p.conv / 365 * (.15 + .85 * F.S) * efCos * efAmb;   // B1: se satura
+    const aba = P / (p.desg * 365) * (1.5 - .6 * F.gob - .3 * F.form) * (1.25 - .5 * lid);                        // B3
+    const sepT = POB * KGHAB / 1000 * ORG * fracSep;                                          // t/día
+    const corT = p.cor * F.corab * (.4 + .6 * F.E);
+    const comp = Math.min(R / p.tcomp, p.cap * (.3 + .7 * F.recic));
+    const hab = Math.max(0, Math.min(Amax, capTrab) - Ar) / 180 * (.4 + .6 * suf);            // B2: límite de suelo y de manos
+    const det = Ar / (3 * 365) + Math.max(0, Ar - capTrab) / 365;                             // bancales que se abandonan
+    const siem = 1.2 * F.siem * (.5 + .5 * suf) * (.3 + .7 * Math.min(1, P / Math.max(1, Ppot))); // árboles/día   (R3)
+    const mort = T * (.02 / 365) + T * p.pres * (.5 / 365) * (1 - .6 * F.G);                   // B4
+    if (d % 5 === 0 || d === DIAS) {
+      out.t.push(d); out.P.push(P); out.R.push(R); out.C.push(C); out.A.push(Ar); out.T.push(T); out.DJ.push(DJ); out.cos.push(cosecha); out.aut.push(aut * 100);
+      out.lid = out.lid || []; out.lid.push(lid * 100);
+      out.fl.push({ lid, exVoc, inc, aba, sepT, corT, comp, uso, hab, det, siem, mort, cosecha, aut, calidad, suf, fracSep, capTrab, efCos });
+    }
+    // integración
+    P += inc - aba; R += sepT + corT - comp; C += comp * .4 - uso; Ar += hab - det; T += siem - mort; DJ += sepT + corT;
+  }
+  return out;
+}
+
+/* ---------- DIAGRAMA ---------- */
+const svg = $('#diag');
+const el = (t, a = {}, p = svg, tx) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (tx != null) e.textContent = tx; p.appendChild(e); return e; };
+const defs = el('defs');
+for (const [id, c] of [['ah', '#cfd8de'], ['ahp', '#8fc46a'], ['ahn', '#e0664f'], ['ahr', '#a98bd6']]) {
+  const m = el('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, defs);
+  el('path', { d: 'M0 0L10 5L0 10z', fill: c }, m);
+}
+// nodos: s = stock, v = válvula (flujo), a = auxiliar, n = nube, r = fuerza de la red
+const N = {
+  P: { k: 's', x: 600, y: 95, n: 'Participación comunitaria', u: 'personas', c: '#e58aa8' },
+  R: { k: 's', x: 330, y: 330, n: 'Residuos orgánicos en pila', u: 't', c: '#b98a57' },
+  C: { k: 's', x: 700, y: 330, n: 'Compost disponible', u: 't', c: '#e3a64a' },
+  A: { k: 's', x: 330, y: 560, n: 'Área cultivada', u: 'm²', c: '#8fc46a' },
+  T: { k: 's', x: 930, y: 560, n: 'Árboles del Bosque Bavaria', u: 'árboles', c: '#4f8a3c' },
+  nP0: { k: 'n', x: 365, y: 95 }, nP1: { k: 'n', x: 840, y: 95 },
+  nR0: { k: 'n', x: 80, y: 330 }, nR1: { k: 'n', x: 330, y: 205 },
+  nC1: { k: 'n', x: 965, y: 330 },
+  nA0: { k: 'n', x: 80, y: 560 }, nA1: { k: 'n', x: 585, y: 560 },
+  nT0: { k: 'n', x: 690, y: 560 }, nT1: { k: 'n', x: 1160, y: 560 },
+  inc: { k: 'v', x: 480, y: 95, n: 'incorporación', f: 'inc', u: 'pers/día' },
+  aba: { k: 'v', x: 725, y: 95, n: 'abandono', f: 'aba', u: 'pers/día' },
+  sep: { k: 'v', x: 185, y: 330, n: 'separación en la fuente', f: 'sepT', u: 't/día' },
+  cor: { k: 'v', x: 330, y: 258, n: 'aporte Corabastos', f: 'corT', u: 't/día', lado: 1 },
+  comp: { k: 'v', x: 515, y: 330, n: 'compostaje (×0,4)', f: 'comp', u: 't/día' },
+  uso: { k: 'v', x: 845, y: 330, n: 'uso (bancales y parques)', f: 'uso', u: 't/día' },
+  hab: { k: 'v', x: 185, y: 560, n: 'habilitación de bancales', f: 'hab', u: 'm²/día' },
+  det: { k: 'v', x: 470, y: 560, n: 'abandono de bancales', f: 'det', u: 'm²/día' },
+  siem: { k: 'v', x: 800, y: 560, n: 'siembra', f: 'siem', u: 'árb/día' },
+  mort: { k: 'v', x: 1050, y: 560, n: 'mortalidad y tala', f: 'mort', u: 'árb/día' },
+  cos: { k: 'a', x: 560, y: 655, n: 'cosecha', f: 'cosecha', u: 'kg/día' },
+  aut: { k: 'a', x: 330, y: 660, n: 'autoabastecimiento', f: 'aut', u: '%', pct: 1 },
+  efc: { k: 'a', x: 420, y: 195, n: 'efecto cosecha visible', f: 'efCos', u: '×' },
+  frs: { k: 'a', x: 160, y: 430, n: 'fracción separada', f: 'fracSep', u: '%', pct: 1 },
+  suf: { k: 'a', x: 700, y: 440, n: 'suficiencia de compost', f: 'suf', u: '%', pct: 1 },
+  ctr: { k: 'a', x: 470, y: 450, n: 'capacidad de trabajo', f: 'capTrab', u: 'm²' },
+  lid: { k: 'a', x: 880, y: 175, n: 'liderazgo distribuido', f: 'lid', u: '%', pct: 1 },
+  cal: { k: 'a', x: 1060, y: 420, n: 'calidad ambiental', f: 'calidad', u: '%', pct: 1 },
+  rS: { k: 'r', x: 600, y: 22, n: 'RED · social', d: '1', f: 'S' },
+  rE: { k: 'r', x: 110, y: 230, n: 'RED · económica', d: '2', f: 'E' },
+  rG: { k: 'r', x: 1080, y: 470, n: 'RED · ecológica', d: '3', f: 'G' },
+};
+const FLUJOS = [['nP0', 'inc', 'P'], ['P', 'aba', 'nP1'], ['nR0', 'sep', 'R'], ['nR1', 'cor', 'R'], ['R', 'comp', 'C'], ['C', 'uso', 'nC1'], ['nA0', 'hab', 'A'], ['A', 'det', 'nA1'], ['nT0', 'siem', 'T'], ['T', 'mort', 'nT1']];
+// vínculos causales [desde, hacia, polaridad, curvatura]
+const LINKS = [
+  ['P', 'aba', '+', 0], ['P', 'inc', '−', -40], ['efc', 'inc', '+', 0], ['aut', 'efc', '+', 120], ['cos', 'aut', '+', 20],
+  ['A', 'cos', '+', -30], ['suf', 'cos', '+', 30], ['P', 'frs', '+', 160], ['frs', 'sep', '+', 0], ['R', 'comp', '+', 0],
+  ['C', 'uso', '+', 0], ['uso', 'suf', '+', -20], ['suf', 'hab', '+', 60], ['P', 'ctr', '+', 60], ['ctr', 'hab', '+', -40],
+  ['ctr', 'det', '−', 0], ['A', 'det', '+', 0], ['A', 'hab', '−', 35], ['suf', 'siem', '+', -25], ['P', 'siem', '+', -120],
+  ['T', 'cal', '+', -20], ['cal', 'inc', '+', 210], ['T', 'mort', '+', 0], ['A', 'uso', '+', -170],
+  ['P', 'lid', '+', -60], ['lid', 'aba', '−', 20], ['rS', 'inc', '+', 0], ['rE', 'sep', '+', 0], ['rE', 'cor', '+', 20], ['rG', 'cal', '+', 0], ['rG', 'siem', '+', 30], ['rG', 'mort', '−', 0],
+];
+const BUCLES = [
+  ['R1', 'Cosecha visible', 585, 395, 'R', 'Participación → capacidad de trabajo → área cultivada → cosecha → autoabastecimiento → efecto cosecha visible → incorporación → Participación', 'Más gente cultiva más bancales; la cosecha se ve en el barrio y convoca a más gente.'],
+  ['R2', 'Ciclo de nutrientes', 255, 420, 'R', 'Participación → fracción separada → separación → residuos → compostaje → compost → uso → suficiencia → habilitación → área → cosecha → … → Participación', 'Los residuos del barrio y de Corabastos vuelven como abono, que hace crecer los bancales que sostienen la participación.'],
+  ['R3', 'Bosque y confianza', 905, 230, 'R', 'Participación → siembra → árboles → calidad ambiental → incorporación → Participación', 'Cuidar el bosque lo vuelve un lugar que atrae; la gente que llega siembra más.'],
+  ['R4', 'Liderazgo distribuido', 790, 235, 'R', 'Participación → personas que han sido vocería → liderazgo distribuido → abandono (−) → Participación', 'Cuando la vocería rota, cada periodo hay más gente que ya llevó la voz de su asamblea; se sienten dueños y se quedan. Con un líder único este bucle no arranca.'],
+  ['B1', 'Saturación', 545, 175, 'B', 'Participación → (potencial − participación) → incorporación', 'Mientras más gente ya participa, menos queda por convocar.'],
+  ['B2', 'Límite de suelo y de manos', 255, 615, 'B', 'Área cultivada → brecha de área → habilitación', 'Los bancales crecen hasta el suelo disponible o hasta lo que la gente alcanza a cuidar.'],
+  ['B3', 'Desgaste voluntario', 705, 165, 'B', 'Participación → abandono', 'Toda participación se desgasta; la gobernanza (Alcaldía, Mesa, Personería) y la formación la alargan.'],
+  ['B4', 'Presión sobre el bosque', 1000, 640, 'B', 'Árboles → mortalidad y tala', 'La mortalidad y la tala dependen del decreto: 364/2017 tala casi todo, 448/2023 conserva.'],
+];
+function borde(n, hacia, pad = 0) { // punto en el borde del nodo n mirando hacia (x,y)
+  const dx = hacia.x - n.x, dy = hacia.y - n.y, L = Math.hypot(dx, dy) || 1;
+  if (n.k === 's') { const w = 78 + pad, h = 30 + pad, s = Math.min(w / Math.abs(dx || 1e-6), h / Math.abs(dy || 1e-6)); return { x: n.x + dx * s, y: n.y + dy * s }; }
+  const r = (n.k === 'v' ? 14 : n.k === 'r' ? 30 : n.k === 'n' ? 16 : 26) + pad; return { x: n.x + dx / L * r, y: n.y + dy / L * r };
+}
+const gLk = el('g'), gFl = el('g'), gNd = el('g'), gLp = el('g');
+const VIS = {};
+// tuberías
+for (const [a, v, b] of FLUJOS) {
+  const A_ = N[a], V = N[v], B = N[b], p0 = borde(A_, B), p1 = borde(B, A_, 4);
+  const d = `M${p0.x} ${p0.y}L${p1.x} ${p1.y}`;
+  el('path', { d, class: 'pipe', stroke: '#cfd8de' }, gFl); el('path', { d, class: 'pipe2' }, gFl);
+  const fl = el('path', { d, class: 'flujo', stroke: N[b].c || N[a].c || '#cfd8de' }, gFl);
+  el('path', { d: `M${p1.x} ${p1.y}`, 'marker-end': 'url(#ah)' }, gFl);
+  const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+  el('path', { d: `M${p1.x - Math.cos(ang) * 12} ${p1.y - Math.sin(ang) * 12}L${p1.x} ${p1.y}`, stroke: '#cfd8de', 'stroke-width': 2, 'marker-end': 'url(#ah)' }, gFl);
+  VIS[v] = { fl, off: 0 };
+}
+// vínculos causales
+for (const [a, b, s, k] of LINKS) {
+  const A_ = N[a], B = N[b], mx = (A_.x + B.x) / 2, my = (A_.y + B.y) / 2, dx = B.x - A_.x, dy = B.y - A_.y, L = Math.hypot(dx, dy) || 1;
+  const cx = mx - dy / L * k, cy = my + dx / L * k, c = { x: cx, y: cy };
+  const p0 = borde(A_, c, 2), p1 = borde(B, c, 3);
+  const red = A_.k === 'r', col = red ? DIMS[A_.d].c : s === '+' ? '#8fc46a' : '#e0664f';
+  const path = el('path', { d: `M${p0.x} ${p0.y}Q${cx} ${cy} ${p1.x} ${p1.y}`, class: 'lk', stroke: red ? col : '#9aa7b2', 'stroke-dasharray': red ? '4 3' : '', 'marker-end': `url(#${red ? 'ahr' : s === '+' ? 'ahp' : 'ahn'})`, opacity: .8 }, gLk);
+  // signo cerca de la punta
+  const t = .82, qx = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * cx + t * t * p1.x, qy = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * cy + t * t * p1.y;
+  el('text', { x: qx + (-(p1.y - p0.y) / L) * 9, y: qy + ((p1.x - p0.x) / L) * 9 + 4, class: 'pol', fill: s === '+' ? '#8fc46a' : '#e0664f', 'text-anchor': 'middle' }, gLk, s);
+}
+// nodos
+for (const [id, n] of Object.entries(N)) {
+  if (n.k === 's') {
+    const g = el('g', { class: 'st' }, gNd);
+    el('rect', { class: 'box', x: n.x - 78, y: n.y - 30, width: 156, height: 60, rx: 3 }, g);
+    n.fill = el('rect', { x: n.x - 77, y: n.y + 29, width: 154, height: 0, fill: n.c, opacity: .28 }, g);
+    el('text', { class: 'n', x: n.x, y: n.y - 7, 'text-anchor': 'middle' }, g, n.n);
+    n.val = el('text', { class: 'v', x: n.x, y: n.y + 15, 'text-anchor': 'middle', fill: n.c }, g, '');
+  } else if (n.k === 'v') {
+    const g = el('g', {}, gNd);
+    el('path', { d: `M${n.x - 9} ${n.y - 11}L${n.x + 9} ${n.y + 11}M${n.x - 9} ${n.y + 11}L${n.x + 9} ${n.y - 11}`, stroke: '#cfd8de', 'stroke-width': 1.5 }, g);
+    el('path', { d: `M${n.x - 9} ${n.y - 11}L${n.x + 9} ${n.y - 11}L${n.x - 9} ${n.y + 11}L${n.x + 9} ${n.y + 11}Z`, fill: '#0b1015', stroke: '#cfd8de', 'stroke-width': 1.4 }, g);
+    const dy = n.lado ? 0 : 28, dx = n.lado ? 18 : 0, an = n.lado ? 'start' : 'middle';
+    el('text', { x: n.x + dx, y: n.y + dy, 'font-size': 11, fill: '#e6ecf0', 'text-anchor': an }, g, n.n);
+    n.val = el('text', { x: n.x + dx, y: n.y + dy + 13, 'font-size': 10, fill: '#8b9aa7', 'text-anchor': an, 'font-family': 'JetBrains Mono,monospace' }, g, '');
+  } else if (n.k === 'n') {
+    el('path', { d: `M${n.x - 12} ${n.y + 6}a7 7 0 0 1 2-12a8 8 0 0 1 14-2a7 7 0 0 1 8 9a5 5 0 0 1-4 5z`, fill: 'none', stroke: '#5f6e7a', 'stroke-width': 1.3 }, gNd);
+  } else if (n.k === 'a') {
+    const g = el('g', { class: 'aux' }, gNd);
+    el('text', { class: 'n', x: n.x, y: n.y, 'text-anchor': 'middle' }, g, n.n);
+    n.val = el('text', { class: 'v', x: n.x, y: n.y + 13, 'text-anchor': 'middle' }, g, '');
+  } else if (n.k === 'r') {
+    const g = el('g', { class: 'red' }, gNd), c = DIMS[n.d].c;
+    el('rect', { x: n.x - 62, y: n.y - 13, width: 124, height: 26, rx: 13, stroke: c }, g);
+    n.val = el('text', { x: n.x, y: n.y + 4, 'text-anchor': 'middle', fill: c }, g, n.n);
+  }
+}
+// marcadores de bucle
+for (const [id, nom, x, y, tipo] of BUCLES) {
+  const g = el('g', { class: 'loop' }, gLp), c = tipo === 'R' ? '#e3a64a' : '#5fb3d9';
+  el('path', { d: `M${x + 13} ${y - 8}A15 15 0 1 0 ${x + 15} ${y + 4}`, fill: 'none', stroke: c, 'stroke-width': 1.4, 'marker-end': 'url(#ah)' }, g);
+  el('text', { x, y: y + 5, 'text-anchor': 'middle', fill: c }, g, id);
+  el('text', { class: 'ln', x, y: y + 30, 'text-anchor': 'middle' }, g, nom);
+}
+
+/* ---------- bucles y ecuaciones (texto) ---------- */
+$('#bucles').innerHTML = '<p class="nota" style="margin:0 0 12px">R = bucle de refuerzo (crece sobre sí mismo) · B = bucle de balance (lo frena). La polaridad de cada flecha está en el diagrama.</p>' +
+  BUCLES.map(([id, nom, , , t, cad, txt]) => `<div class="bucle"><b style="color:${t === 'R' ? '#e3a64a' : '#5fb3d9'}">${id} · ${nom}</b><p>${txt}</p><code>${cad}</code></div>`).join('') +
+  `<div class="bucle"><b style="color:#a98bd6">Red de actores → modelo</b><p>Las tres dimensiones de vínculo entran como multiplicadores: <b>social</b> sobre la incorporación, <b>económica</b> sobre la separación y el aporte de Corabastos, <b>ecológica</b> sobre la siembra, la calidad ambiental y la tala. Actores clave tienen efectos propios: Corabastos (aporte orgánico), recicladores, UAESP y compostaje (eficiencia), Alcaldía, Mesa comunitaria, Personería y Colectivo Bavaria (gobernanza), Jardín Botánico, SDA y Colectivo (siembra), y la formación (permanencia).</p></div>`;
+const ECU = `<span class="h">{UNIDADES: personas, t, m², árboles, kg; TIEMPO: día; INITIAL TIME = 0; FINAL TIME = 3650; TIME STEP = 1; INTEGRATION = Euler}</span>
+
+<span class="h">Participación comunitaria</span> = INTEG(incorporación − abandono, 0,002 × Adultos)        ~ personas
+<span class="h">Residuos orgánicos en pila</span> = INTEG(separación + aporte Corabastos − compostaje, 0)   ~ t
+<span class="h">Compost disponible</span> = INTEG(0,4 × compostaje − salida de compost, 0)                   ~ t
+<span class="h">Área cultivada</span> = INTEG(habilitación − abandono de bancales, 1.500)                  ~ m²
+<span class="h">Árboles del Bosque Bavaria</span> = INTEG(siembra − mortalidad y tala, 3.250)               ~ árboles
+
+incorporación = MAX(0, Potencial − Participación) × Tasa convocatoria / 365 × (0,15 + 0,85 × Red social) × efecto cosecha visible × (0,6 + 0,4 × calidad ambiental)
+abandono = Participación / (Permanencia × 365) × (1,5 − 0,6 × Gobernanza − 0,3 × Formación) × (1,25 − 0,5 × liderazgo distribuido)
+personas que han sido vocería = SI(Método = líder único, 6, MIN(6 × periodos, MAX(6, 0,25 × Participación)))
+periodos = INTEGER(Time / (Duración vocería × 30,42)) + 1
+liderazgo distribuido = MIN(1, personas que han sido vocería / 60)
+separación = Población × 0,8 / 1000 × 0,51 × fracción separada
+fracción separada = Meta separación × MIN(1, Participación / Potencial) × (0,35 + 0,65 × Reciclaje) × (0,5 + 0,5 × Red económica)
+aporte Corabastos = Aporte × Corabastos activo × (0,4 + 0,6 × Red económica)
+compostaje = MIN(Residuos / Tiempo compostaje, Capacidad planta × (0,3 + 0,7 × Reciclaje))
+demanda compost = Área cultivada × 3 / 365 / 1000
+uso en bancales = MIN(Compost / 20, demanda compost)
+excedente a parques = MAX(0, Compost − 80) / 30
+salida de compost = uso en bancales + excedente a parques
+suficiencia de compost = uso en bancales / demanda compost
+capacidad de trabajo = Participación × m² por voluntario
+habilitación = MAX(0, MIN(Área máxima, capacidad de trabajo) − Área cultivada) / 180 × (0,4 + 0,6 × suficiencia)
+abandono de bancales = Área cultivada / 1095 + MAX(0, Área cultivada − capacidad de trabajo) / 365
+cosecha = Área cultivada × Rendimiento / 365 × (0,55 + 0,45 × suficiencia)          ~ kg/día
+autoabastecimiento = cosecha / (Población × 0,2)
+efecto cosecha visible = 1 + 1,5 × MIN(1, autoabastecimiento / 0,3)
+siembra = 1,2 × Siembra(red) × (0,5 + 0,5 × suficiencia) × (0,3 + 0,7 × MIN(1, Participación / Potencial))
+mortalidad y tala = Árboles × 0,02/365 + Árboles × Presión desarrollo × 0,5/365 × (1 − 0,6 × Red ecológica)
+calidad ambiental = MIN(1, Árboles / 3.250) × (0,5 + 0,5 × Red ecológica)
+
+<span class="h">Constantes</span>
+Población = 40.320 (UPZ 113 Bavaria, SDS 2021) · Adultos = 0,7 × Población
+Potencial = Adultos × Participación potencial · Área máxima = 27.043 + 26.098 × Techos habilitados
+
+<span class="h">Red de actores (data3d/red_georef_actores.json)</span>
+Red social / económica / ecológica = vínculos directos activos de esa dimensión / vínculos totales
+Reciclaje = promedio(Recicladores ECA, UAESP, Compostaje de biomasa)
+Gobernanza = promedio(Alcaldía Local, Mesa Comunitaria, Personería, Colectivo Bavaria)
+Siembra(red) = promedio(Bosque Bavaria, Jardín Botánico, SDA, Colectivo Bavaria, Arbolado Bavaria)
+Formación = promedio(Biblioteca El Tintal, Semillero, SENA, Escuela de liderazgo)
+Corabastos activo = 1 si el hub Corabastos está encendido
+
+<span class="c">Los coeficientes de comportamiento son supuestos para discutir; cámbialos con los deslizadores.</span>`;
+$('#ecu').innerHTML = ECU + '\n\n<button class="btn" id="bajarEcu">Descargar ecuaciones (.txt)</button>';
+$('#bajarEcu').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([$('#ecu').innerText.replace('Descargar ecuaciones (.txt)', '')], { type: 'text/plain' })); a.download = 'modelo_bavaria_ecuaciones.txt'; a.click(); };
+
+/* ---------- gráficas ---------- */
+const G = [
+  ['P', 'Participación comunitaria', 'personas activas', ['P'], ['#e58aa8']],
+  ['RC', 'Residuos en pila y compost', 't', ['R', 'C'], ['#b98a57', '#e3a64a']],
+  ['A', 'Área cultivada', 'm²', ['A'], ['#8fc46a']],
+  ['aut', 'Autoabastecimiento de hortalizas', '% de la meta de 200 g/persona/día', ['aut'], ['#8fc46a']],
+  ['T', 'Árboles del Bosque Bavaria', 'árboles', ['T'], ['#4f8a3c']],
+  ['lid', 'Liderazgo distribuido', '% (personas que han sido vocería / 60)', ['lid'], ['#e58aa8']],
+  ['DJ', 'Orgánicos desviados de Doña Juana', 't acumuladas', ['DJ'], ['#5fb3d9']],
+];
+$('#graf').innerHTML = G.map(([id, n, u]) => `<div class="g"><h3>${n}</h3><p id="gv-${id}">${u}</p><svg id="g-${id}" viewBox="0 0 300 130"></svg></div>`).join('');
+let RUN = null, REF = null, idx = 0;
+function grafica([id, , u, series, cols]) {
+  const s = $('#g-' + id); s.innerHTML = '';
+  const all = [...series.flatMap(k => RUN[k]), ...(REF ? series.flatMap(k => REF[k]) : [])];
+  const max = Math.max(1e-9, ...all) * 1.08, X = i => 34 + i / (RUN.t.length - 1) * 258, Y = v => 112 - v / max * 102;
+  for (let k = 0; k <= 3; k++) { const v = max * k / 3, y = Y(v); el('line', { x1: 34, x2: 292, y1: y, y2: y, stroke: 'rgba(255,255,255,.07)' }, s); el('text', { x: 30, y: y + 3, 'text-anchor': 'end', 'font-size': 8, fill: '#5f6e7a', 'font-family': 'JetBrains Mono,monospace' }, s, fmtC(v)); }
+  for (let a = 0; a <= 10; a += 2) el('text', { x: X(a / 10 * (RUN.t.length - 1)), y: 125, 'text-anchor': 'middle', 'font-size': 8, fill: '#5f6e7a', 'font-family': 'JetBrains Mono,monospace' }, s, 'año ' + a);
+  const line = (arr, c, dash) => el('path', { d: arr.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(''), fill: 'none', stroke: c, 'stroke-width': dash ? 1.2 : 1.8, 'stroke-dasharray': dash ? '4 3' : '', opacity: dash ? .55 : 1 }, s);
+  if (REF) series.forEach((k, j) => line(REF[k], '#8b9aa7', 1));
+  series.forEach((k, j) => line(RUN[k], cols[j]));
+  el('line', { x1: X(idx), x2: X(idx), y1: 8, y2: 112, stroke: '#e3a64a', 'stroke-width': 1, opacity: .7 }, s);
+  series.forEach((k, j) => el('circle', { cx: X(idx), cy: Y(RUN[k][idx]), r: 3, fill: cols[j] }, s));
+  $('#gv-' + id).innerHTML = `${u} · <b style="color:${cols[0]}">${series.map(k => fmt(RUN[k][idx])).join(' / ')}</b>`;
+}
+
+/* ---------- pintar estado en el instante idx ---------- */
+const fmt = v => Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('es-CO') : Math.abs(v) >= 10 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(1) : v.toFixed(2);
+const fmtC = v => v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(v >= 1e4 ? 0 : 1) + 'k' : v >= 10 ? v.toFixed(0) : v.toFixed(1);
+const MAXS = {};
+function pintar() {
+  const f = RUN.fl[idx], F = RUN.F, dia = RUN.t[idx];
+  $('#t').textContent = `año ${(dia / 365).toFixed(1)} · día ${dia}`;
+  for (const k of ['P', 'R', 'C', 'A', 'T']) {
+    const n = N[k], v = RUN[k][idx], mx = MAXS[k];
+    n.val.textContent = fmt(v) + ' ' + n.u;
+    const h = Math.max(0, Math.min(1, v / mx)) * 58; n.fill.setAttribute('height', h); n.fill.setAttribute('y', n.y + 29 - h);
+  }
+  for (const [id, n] of Object.entries(N)) {
+    if (n.k === 'v') n.val.textContent = fmt(f[n.f]) + ' ' + n.u;
+    if (n.k === 'a') n.val.textContent = n.pct ? Math.round(f[n.f] * 100) + ' %' : fmt(f[n.f]) + ' ' + n.u;
+    if (n.k === 'r') n.val.textContent = `${n.n} ${Math.round(F[n.f] * 100)}%`;
+  }
+  G.forEach(grafica);
+  if ($('#vSub').classList.contains('on')) pintarSub();
+  if ($('#vAsa').classList.contains('on')) pintarAsa();
+}
+// animación de las tuberías según la tasa de cada flujo
+const FMAX = {};
+let ultT = performance.now();
+function animar(now) {
+  const dt = (now - ultT) / 1000; ultT = now;
+  if (RUN) for (const [v, o] of Object.entries(VIS)) {
+    const r = RUN.fl[idx][N[v].f] / (FMAX[v] || 1);
+    o.off -= dt * (6 + 60 * r); o.fl.setAttribute('stroke-dashoffset', o.off.toFixed(1)); o.fl.setAttribute('opacity', (.15 + .85 * Math.min(1, r)).toFixed(2));
+  }
+  if (jugando) { idx = Math.min(RUN.t.length - 1, idx + Math.max(1, Math.round(dt * 70))); $('#cursor').value = RUN.t[idx]; pintar(); if (idx >= RUN.t.length - 1) parar(); }
+  requestAnimationFrame(animar);
+}
+let jugando = false;
+const parar = () => { jugando = false; $('#play').textContent = '▶ Simular'; };
+$('#play').onclick = () => { if (jugando) return parar(); if (idx >= RUN.t.length - 1) idx = 0; jugando = true; $('#play').textContent = '❚❚ Pausa'; };
+$('#cursor').oninput = e => { parar(); idx = Math.round(+e.target.value / 5); idx = Math.min(idx, RUN.t.length - 1); pintar(); };
+$('#ref').onclick = () => { REF = RUN; pintar(); };
+
+/* ---------- método de vocería ---------- */
+function pintarMetodo() { document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === par.metodo)); }
+document.addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; par.metodo = b.dataset.m; marcarEsc(null); correr(); });
+
+/* ---------- SUB-RED BAVARIA COMÚN ---------- */
+let compSel = 'gob';
+const IND = { A: ['Área cultivada', v => fmt(v) + ' m²'], C: ['Compost disponible', v => fmt(v) + ' t'], T: ['Árboles', v => fmt(v)], cos: ['Cosecha', v => fmt(v) + ' kg/día'], aut: ['Autoabastecimiento', v => v.toFixed(1) + ' %'], lid: ['Liderazgo distribuido', v => Math.round(v) + ' %'] };
+function pintarSub() {
+  const W = 1000, H = 470, cx = 500, cy = 235, R = 185;
+  const pos = {}; COMPONENTES.forEach((c, i) => { const a = -Math.PI / 2 + i / COMPONENTES.length * Math.PI * 2; pos[c.id] = [cx + Math.cos(a) * R * 1.45, cy + Math.sin(a) * R]; });
+  const flechas = FLUJOS_COMP.map(([a, b, t]) => {
+    const [x1, y1] = pos[a], [x2, y2] = pos[b], mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const qx = mx + (mx - cx) * .3 + (y2 - y1) * .12, qy = my + (my - cy) * .3 - (x2 - x1) * .12;
+    const vis = compSel === a || compSel === b, col = COMPONENTES.find(c => c.id === a).c;
+    const L = Math.hypot(x2 - qx, y2 - qy) || 1, ex = x2 - (x2 - qx) / L * 50, ey = y2 - (y2 - qy) / L * 32;
+    return `<path d="M${x1} ${y1}Q${qx} ${qy} ${ex} ${ey}" fill="none" stroke="${col}" stroke-width="${vis ? 1.8 : 1}" opacity="${vis ? .95 : .22}" marker-end="url(#sa)"/>` +
+      (vis ? `<text x="${(x1 + 2 * qx + ex) / 4}" y="${(y1 + 2 * qy + ey) / 4 - 4}" fill="${col}" font-size="10.5" font-family="JetBrains Mono,monospace" text-anchor="middle">${t}</text>` : '');
+  }).join('');
+  const nodos = COMPONENTES.map(c => {
+    const [x, y] = pos[c.id], sel = c.id === compSel, falt = c.pasos.filter(p => p[2].every(id => off.has(id))).length;
+    return `<g class="hl" data-comp="${c.id}"><rect x="${x - 84}" y="${y - 26}" width="168" height="52" rx="10" fill="#0b1015" stroke="${c.c}" stroke-width="${sel ? 2.5 : 1.2}"/>
+      <text x="${x}" y="${y - 4}" text-anchor="middle" font-size="13" font-weight="600" fill="#e6ecf0">${c.icon} ${c.n}</text>
+      <text x="${x}" y="${y + 13}" text-anchor="middle" font-size="9.5" fill="${falt ? '#e0664f' : '#8b9aa7'}" font-family="JetBrains Mono,monospace">${falt ? '⚠ ' + falt + ' paso(s) sin quién los haga' : c.pasos.length + ' pasos'}</text></g>`;
+  }).join('');
+  const c = COMPONENTES.find(x => x.id === compSel), ind = IND[c.ind], vInd = RUN[c.ind][idx];
+  const pasos = c.pasos.map(([t, como, ids], i) => {
+    const sin = ids.every(id => off.has(id));
+    return `<div class="paso" style="border-color:${sin ? '#e0664f' : 'var(--line2)'}"><div class="pn" style="background:${c.c}">${i + 1}</div><b>${t}</b><p>${como}</p><div class="chips">${ids.map(id => { const a = byId[id]; return `<span class="chip ${off.has(id) ? 'off' : ''}" data-id="${id}" title="${a.d}"><i style="background:${COM[a.com].c}"></i>${a.n}</span>`; }).join('')}</div>${sin ? '<p style="color:#e0664f;margin-top:6px">⚠ Nadie de la red está encendido para hacer este paso.</p>' : ''}</div>`;
+  }).join('<div class="fl">→</div>');
+  $('#sub').innerHTML = `<p class="nota" style="padding:12px 16px 0;margin:0">Cada caja es un componente de Bavaria Común. Las flechas muestran qué le pasa cada uno al otro. Toca un componente para ver <b>cómo se hace</b>: sus pasos y qué actores de la red los hacen. Si apagas actores, los pasos que se quedan sin nadie se marcan en rojo.</p>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"><defs><marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#cfd8de"/></marker></defs>
+  <circle cx="${cx}" cy="${cy}" r="62" fill="#0b1015" stroke="#e3a64a" stroke-dasharray="4 3"/><text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="15" font-weight="700" fill="#e3a64a">Bavaria Común</text><text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="10" fill="#8b9aa7" font-family="JetBrains Mono,monospace">71,2 ha · Kennedy</text>
+  ${flechas}${nodos}</svg>
+  <div class="det"><div class="dh"><span style="font-size:26px">${c.icon}</span><div><h3 style="color:${c.c}">${c.n}</h3><p>${c.que}</p><p class="nota">${c.dato} · en el modelo, año ${(RUN.t[idx] / 365).toFixed(1)}: <b style="color:${c.c}">${ind[0]} ${ind[1](vInd)}</b></p></div></div>
+  <div class="pasos">${pasos}</div></div>`;
+  $('#sub').querySelectorAll('[data-comp]').forEach(g => g.onclick = () => { compSel = g.dataset.comp; pintarSub(); });
+  $('#sub').querySelectorAll('.chip[data-id]').forEach(ch => ch.onclick = () => { const id = ch.dataset.id; off.has(id) ? off.delete(id) : off.add(id); marcarEsc(null); correr(); });
+}
+
+/* ---------- ASAMBLEAS ROTATIVAS ---------- */
+let ROT = null;
+function pintarAsa() {
+  const per = ROT.per, k = Math.min(per - 1, Math.floor(RUN.t[idx] / (par.meses * 30.42))), M = metricas(ROT, k);
+  const GC = { M: '#e58aa8', H: '#5fb3d9', NB: '#a98bd6' };
+  const W = 1000, x0 = 210, cw = (W - x0 - 20) / per, rh = 46, H = 60 + ASAMBLEAS.length * rh + 10;
+  let filas = '';
+  ROT.filas.forEach(({ as, fila }, r) => {
+    const y = 60 + r * rh;
+    filas += `<text x="12" y="${y + 4}" font-size="12" fill="#e6ecf0" font-weight="600">${as.n}</text><text x="12" y="${y + 18}" font-size="9.5" fill="#8b9aa7" font-family="JetBrains Mono,monospace">${as.t} · bolsa ${fila[k].bolsa}</text>`;
+    fila.forEach((c, i) => {
+      const x = x0 + (i + .5) * cw, fut = i > k, rr = Math.min(11, cw * .4);
+      filas += `<circle cx="${x}" cy="${y + 4}" r="${rr}" fill="${fut ? 'none' : GC[c.g]}" stroke="${c.nuevo ? GC[c.g] : '#ffffff'}" stroke-width="${c.nuevo ? 1.2 : 2.4}" opacity="${fut ? .35 : 1}"><title>${as.n} · periodo ${i + 1} · vocería ${c.id} (${c.g === 'M' ? 'mujer' : c.g === 'H' ? 'hombre' : 'no binaria'})${c.suplente ? ' · suplente ' + c.suplente : ''}${c.nuevo ? ' · primera vez' : ' · repite'}</title></circle>`;
+      if (cw > 22) filas += `<text x="${x}" y="${y + 7.5}" text-anchor="middle" font-size="8.5" fill="#000" font-family="JetBrains Mono,monospace" opacity="${fut ? 0 : 1}">${c.id.slice(-2)}</text>`;
+    });
+  });
+  let cab = ''; for (let i = 0; i < per; i++) { const x = x0 + (i + .5) * cw; if (per <= 20 || i % 2 === 0) cab += `<text x="${x}" y="40" text-anchor="middle" font-size="9" fill="#5f6e7a" font-family="JetBrains Mono,monospace">${(i * par.meses / 12).toFixed(1)}</text>`; }
+  const cur = x0 + (k + .5) * cw;
+  const cxs = 170, cys = 165, rs = 105;
+  const corto = n => n.replace('Asamblea ', '').replace('Mesa de ', '').replace('Mesa del ', '');
+  const asientos = ROT.filas.map(({ as, fila }, i) => { const a = -Math.PI / 2 + i / (ASAMBLEAS.length + 1) * Math.PI * 2, x = cxs + Math.cos(a) * rs, y = cys + Math.sin(a) * rs, c = fila[k];
+    return `<line x1="${cxs}" y1="${cys}" x2="${x}" y2="${y}" stroke="#262f38"/><circle cx="${x}" cy="${y}" r="17" fill="${GC[c.g]}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="10" fill="#000" font-family="JetBrains Mono,monospace">${c.id.slice(-2)}</text><text x="${x}" y="${y + 31}" text-anchor="middle" font-size="9.5" fill="#cfd8de">${corto(as.n)}</text>${c.suplente && c.suplente !== c.id ? `<circle cx="${x + 15}" cy="${y - 13}" r="6" fill="#000" stroke="${GC[c.g]}" stroke-dasharray="2 2"/>` : ''}`; }).join('');
+  const ab = -Math.PI / 2 + ASAMBLEAS.length / (ASAMBLEAS.length + 1) * Math.PI * 2, bx = cxs + Math.cos(ab) * rs, by = cys + Math.sin(ab) * rs;
+  const met = par.metodo === 'unico' ? 'Líder único' : par.metodo === 'turno' ? 'Turno rotativo' : 'Sorteo rotativo';
+  $('#asa').innerHTML = `<div style="padding:12px 16px 0"><p class="nota" style="margin:0 0 10px">Cada asamblea manda una vocería al consejo federal. Con <b>${met}</b> y periodos de <b>${par.meses} meses</b>, en 10 años hay <b>${per} periodos</b>. La bolsa de cada asamblea sale de la participación simulada (25 % de quienes participan quieren ser vocería). Cambia el método o la duración en la barra derecha y mueve el tiempo para ver la rotación.</p>
+  <div class="met4"><div><b>${M.distintos}</b><span>personas que han sido vocería</span></div><div><b>${Math.round(M.mujeres * 100)} %</b><span>periodos con vocera mujer</span></div><div><b>${M.maxVeces}</b><span>máx. periodos de una misma persona</span></div><div><b>${k + 1}/${per}</b><span>periodo actual</span></div></div></div>
+  <div class="asawrap"><svg viewBox="0 0 340 330"><text x="170" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#e3a64a">Consejo federal · periodo ${k + 1}</text>
+  <circle cx="${cxs}" cy="${cys}" r="36" fill="#0b1015" stroke="#e3a64a"/><text x="${cxs}" y="${cys - 2}" text-anchor="middle" font-size="10" fill="#e3a64a" font-weight="700">Consejo</text><text x="${cxs}" y="${cys + 11}" text-anchor="middle" font-size="9" fill="#8b9aa7">mandato de</text><text x="${cxs}" y="${cys + 22}" text-anchor="middle" font-size="9" fill="#8b9aa7">las asambleas</text>
+  ${asientos}<line x1="${cxs}" y1="${cys}" x2="${bx}" y2="${by}" stroke="#262f38"/><circle cx="${bx}" cy="${by}" r="17" fill="#4f8a3c"/><text x="${bx}" y="${by + 4}" text-anchor="middle" font-size="12">🌳</text><text x="${bx}" y="${by + 31}" text-anchor="middle" font-size="9.5" fill="#cfd8de">Colectivo (fijo)</text>
+  <text x="10" y="320" font-size="9.5" fill="#e58aa8">● mujer <tspan fill="#5fb3d9">● hombre</tspan> <tspan fill="#a98bd6">● no binaria</tspan><tspan fill="#8b9aa7"> · ◌ suplente</tspan></text></svg>
+  <svg viewBox="0 0 ${W} ${H}"><text x="${x0}" y="20" font-size="11" fill="#8b9aa7">años →   borde blanco = la persona repite (solo pasa cuando toda la bolsa ya fue vocería)</text>${cab}
+  <rect x="${cur - cw / 2}" y="46" width="${cw}" height="${ASAMBLEAS.length * rh}" fill="rgba(227,166,74,.12)" stroke="#e3a64a" stroke-width=".8"/>${filas}</svg></div>
+  <div style="padding:6px 16px 16px"><h2>Cómo se escoge la vocería</h2><ol class="reglas">${REGLAS.map(([t, d]) => `<li><b>${t}.</b> ${d}</li>`).join('')}</ol></div>`;
+}
+
+function correr() {
+  const F = fuerzas(); RUN = simular(par, F); RUN.F = F;
+  for (const k of ['P', 'R', 'C', 'A', 'T']) MAXS[k] = Math.max(...RUN[k], k === 'T' ? T0 : 1) * 1.05;
+  for (const v of Object.keys(VIS)) FMAX[v] = Math.max(1e-9, ...RUN.fl.map(f => f[N[v].f]));
+  idx = Math.min(idx, RUN.t.length - 1);
+  ROT = rotacion({ metodo: par.metodo, meses: par.meses, partic: d => RUN.P[Math.min(RUN.P.length - 1, Math.round(d / 5))] });
+  pintarPars(); pintarActores(); pintarMetodo(); pintar();
+}
+function marcarEsc(e) { document.querySelectorAll('[data-e]').forEach(b => b.classList.toggle('on', b.dataset.e === e)); }
+document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => {
+  const e = ESC[b.dataset.e]; par = { ...P0, ...e }; delete par.off;
+  off.clear();
+  if (e.off === 'todos') A.forEach(a => off.add(a.id));
+  if (e.off === 'red-debil') ['H-ENT', 'C06', 'P04', 'P05', 'I02', 'I06', 'F05', 'F06', 'F07', 'F08', 'P01', 'P06', 'P07', 'P08', 'I09', 'C05', 'E07'].forEach(id => off.add(id));
+  marcarEsc(b.dataset.e); idx = RUN ? RUN.t.length - 1 : 0; correr();
+});
+document.querySelectorAll('.tabs [data-v]').forEach(b => b.onclick = () => { document.querySelectorAll('.tabs [data-v]').forEach(x => x.classList.toggle('on', x === b)); document.querySelectorAll('.vista').forEach(v => v.classList.toggle('on', v.id === b.dataset.v)); pintar(); });
+if (off.size) marcarEsc(null);
+correr(); idx = RUN.t.length - 1; pintar();
+requestAnimationFrame(animar);
+})();
+</script>
+</body>
+</html>
