@@ -3,7 +3,7 @@
 
 /* ---------- SUB-RED: cada componente, sus pasos y quién los hace ---------- */
 export const COMPONENTES = [
-  { id: 'gob', n: 'Asambleas y gobernanza', c: '#e58aa8', icon: '🗳️', dato: '6 asambleas · vocería rotativa', ind: 'lid',
+  { id: 'gob', n: 'Asambleas y gobernanza', c: '#e58aa8', num: '01', dato: '6 asambleas · vocería rotativa', ind: 'lid',
     que: 'Federación de asambleas de sector que deciden sobre el predio. Nadie manda solo: la vocería rota.',
     pasos: [
       ['Padrón de la asamblea', 'Cada persona vecina se inscribe en la asamblea de su sector o en una mesa de trabajo. Meta: 5 % de los adultos.', ['H-COM', 'C04', 'C09']],
@@ -13,7 +13,7 @@ export const COMPONENTES = [
       ['Consejo federal', 'Las voceras y voceros llevan lo que decidió su asamblea (mandato), no deciden por su cuenta. El Colectivo Bavaria tiene asiento fijo como guardián del bosque.', ['H-COM', 'C06', 'H-INS']],
       ['Veeduría y rendición de cuentas', 'Cada periodo se rinde cuentas en asamblea; la Personería acompaña y la asamblea puede revocar con 2/3.', ['I09', 'C05', 'H-INS']],
     ] },
-  { id: 'ban', n: 'Bancales en suelo', c: '#8fc46a', icon: '🌱', dato: '27.043 m² · bancales de 1,2 × 8 m', ind: 'A',
+  { id: 'ban', n: 'Bancales en suelo', c: '#8fc46a', num: '02', dato: '27.043 m² · bancales de 1,2 × 8 m', ind: 'A',
     que: 'Huertas comunitarias en el suelo libre del predio, con pasillos de 0,8 m.',
     pasos: [
       ['Diagnóstico y limpieza del suelo', 'Muestreo del suelo de la antigua fábrica; donde haya contaminación se cultiva en cama elevada.', ['I01', 'F05']],
@@ -22,7 +22,7 @@ export const COMPONENTES = [
       ['Siembra por calendario', 'Siembra escalonada según el calendario de cultivos del distrito, con abono del compostaje.', ['P07', 'F07', 'P06']],
       ['Cosecha y registro', 'Se pesa y registra la cosecha de cada bancal para saber cuánto alimento produce el barrio.', ['P06', 'F08']],
     ] },
-  { id: 'tec', n: 'Techos productivos', c: '#a8d672', icon: '🏠', dato: '26.098 m² de techos elegibles a 600 m', ind: 'A',
+  { id: 'tec', n: 'Techos productivos', c: '#a8d672', num: '03', dato: '26.098 m² de techos elegibles a 600 m', ind: 'A',
     que: 'Huertas en techos planos de 150 a 900 m² y menos de 15 m de altura, cerca del predio.',
     pasos: [
       ['Inventario de techos', 'Se identifican techos planos elegibles dentro de 600 m del predio.', ['F05']],
@@ -31,7 +31,7 @@ export const COMPONENTES = [
       ['Instalación ligera y riego', 'Camas ligeras, sustrato con compost y riego por goteo con agua lluvia.', ['F07', 'P09']],
       ['Turnos de mantenimiento', 'Las vecinas y vecinos del edificio cuidan por turnos y llevan la cosecha al mercado.', ['C04', 'P09']],
     ] },
-  { id: 'cmp', n: 'Compostaje', c: '#e3a64a', icon: '♻️', dato: '0,8 kg/hab/día · 51 % orgánico · meta 60 %', ind: 'C',
+  { id: 'cmp', n: 'Compostaje', c: '#e3a64a', num: '04', dato: '0,8 kg/hab/día · 51 % orgánico · meta 60 %', ind: 'C',
     que: 'Los residuos orgánicos del barrio y de Corabastos se vuelven abono en el predio y dejan de ir a Doña Juana.',
     pasos: [
       ['Separación en la fuente', 'Los hogares separan los orgánicos; la JAC y las cuidadoras acompañan casa por casa.', ['C04', 'C03', 'H-COM']],
@@ -40,7 +40,7 @@ export const COMPONENTES = [
       ['Pilas de compost', 'Pilas volteadas durante unos 60 días; rinden cerca del 40 % de la masa como abono.', ['P05', 'F07']],
       ['Abono a bancales, techos y bosque', 'El compost vuelve a los bancales, a los techos y a la siembra de nativas; el excedente va a parques.', ['P05', 'P06', 'I06']],
     ] },
-  { id: 'mer', n: 'Mercado y distribución', c: '#c2652a', icon: '🧺', dato: 'cosecha → mercado → puertas', ind: 'cos',
+  { id: 'mer', n: 'Mercado y distribución', c: '#c2652a', num: '05', dato: 'cosecha → mercado → puertas', ind: 'cos',
     que: 'La cosecha llega al barrio por un mercado propio, las tiendas y la cocina comunitaria.',
     pasos: [
       ['Acopio de cosecha', 'Cada semana se reúne lo cosechado en bancales y techos.', ['P06', 'P01']],
@@ -49,7 +49,7 @@ export const COMPONENTES = [
       ['Tiendas de barrio', 'Las tiendas venden la cosecha cerca de las casas.', ['P09', 'P03']],
       ['Residuos de vuelta al compost', 'Lo que no se vende vuelve a las pilas de compost.', ['P04', 'P05']],
     ] },
-  { id: 'coc', n: 'Cocina comunitaria', c: '#d98b6a', icon: '🍲', dato: 'meta 200 g de hortalizas/persona/día', ind: 'aut',
+  { id: 'coc', n: 'Cocina comunitaria', c: '#d98b6a', num: '06', dato: 'meta 200 g de hortalizas/persona/día', ind: 'aut',
     que: 'Una cocina del predio que transforma la cosecha en comida para quien más la necesita.',
     pasos: [
       ['Censo de familias', 'Las cuidadoras identifican a las familias con inseguridad alimentaria.', ['C04', 'I08']],
@@ -57,7 +57,7 @@ export const COMPONENTES = [
       ['Turnos de cocina', 'Turnos rotativos de vecinas y vecinos; nadie carga solo con la cocina.', ['C04', 'C08']],
       ['Control de salud', 'La Subred revisa manipulación de alimentos y nutrición.', ['I08']],
     ] },
-  { id: 'bos', n: 'Bosque Bavaria', c: '#4f8a3c', icon: '🌳', dato: '3.250 árboles · 22 ha de bosque', ind: 'T',
+  { id: 'bos', n: 'Bosque Bavaria', c: '#4f8a3c', num: '07', dato: '3.250 árboles · 22 ha de bosque', ind: 'T',
     que: 'El arbolado de la antigua fábrica se conserva y se conecta con los humedales.',
     pasos: [
       ['Inventario arbóreo', 'Censo de los árboles del predio (especie, estado, riesgo).', ['I06', 'F05']],
@@ -66,7 +66,7 @@ export const COMPONENTES = [
       ['Monitoreo de aves', 'Conteos de aves y fauna para medir si el bosque funciona como hábitat.', ['F09', 'F06']],
       ['Conector con humedales', 'Corredor verde hacia el Humedal de Techo y El Burro y la ronda del Fucha.', ['I01', 'I04', 'E01', 'E04']],
     ] },
-  { id: 'for', n: 'Formación', c: '#35598c', icon: '📚', dato: 'escuela de huerta, PRAE y liderazgo', ind: 'lid',
+  { id: 'for', n: 'Formación', c: '#35598c', num: '08', dato: 'escuela de huerta, PRAE y liderazgo', ind: 'lid',
     que: 'Que más gente sepa cultivar, compostar y llevar vocería, para que nada dependa de una sola persona.',
     pasos: [
       ['Escuela de huerta y compost', 'Talleres prácticos en el predio para cada cohorte nueva.', ['F07', 'P05']],
@@ -74,7 +74,7 @@ export const COMPONENTES = [
       ['Escuela de vocería', 'Antes de entrar a la bolsa de vocería se toma un taller de mandato y rendición de cuentas.', ['F08', 'H-FOR']],
       ['Investigación y datos', 'El semillero mide cosecha, compost, aves y participación y lo devuelve a la asamblea.', ['F05', 'H-FOR']],
     ] },
-  { id: 'emp', n: 'Trabajo digno', c: '#b98a57', icon: '🛠️', dato: 'prioridad para coteros, recicladores y vendedores', ind: 'C',
+  { id: 'emp', n: 'Trabajo digno', c: '#b98a57', num: '09', dato: 'prioridad para coteros, recicladores y vendedores', ind: 'C',
     que: 'Los puestos de trabajo del distrito se ofrecen primero a quienes hoy trabajan informalmente en Corabastos.',
     pasos: [
       ['Registro de trabajadores informales', 'Coteros, recicladores y vendedores de Corabastos se inscriben.', ['P04', 'H-PRO']],

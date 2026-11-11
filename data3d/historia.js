@@ -202,7 +202,12 @@ pasos($('#sintaxis'), i => {
   ACT.relaciones.forEach(r => REL.push({ a: r[0], b: r[1], d: r[2] }));
   const ORD = Object.keys(COM);
   const cv = $('#cvRed'), L = lienzo(cv), ctx = L.ctx;
-  const N = A.map((a, i) => { const g = ORD.indexOf(a.com), an = g / 5 * Math.PI * 2 - Math.PI / 2; return { a, x: Math.cos(an) * 200 + (Math.random() - .5) * 80, y: Math.sin(an) * 200 + (Math.random() - .5) * 80, vx: 0, vy: 0, r: a.hub ? 16 : 6, col: hex(COM[a.com].c), al: 1 }; });
+  const N = A.map((a, i) => {
+    const g = ORD.indexOf(a.com), an = g / 5 * Math.PI * 2 - Math.PI / 2;
+    const dist = a.hub ? 175 : 175 + (Math.random() - .5) * 80;
+    const ang = a.hub ? an : an + (Math.random() - .5) * .7;
+    return { a, x: Math.cos(ang) * dist, y: Math.sin(ang) * dist, vx: 0, vy: 0, r: a.hub ? 16 : 6, col: hex(COM[a.com].c), al: 1 };
+  });
   const S = { dim: 0, cut: 0, show: 0 }, T = { dim: 0, cut: 0, show: 1 };
   let dimSel = 0, hover = null;
   const PU = REL.map((r, k) => ({ r, u: Math.random(), v: .18 + Math.random() * .2 }));
@@ -210,24 +215,44 @@ pasos($('#sintaxis'), i => {
   $('#datoCorab').textContent = Math.round(fuerzaE(true) * 100) + ' %';
   function sim(dt) {
     const k = Math.min(1, dt * 60);
+    // 1. Repulsión entre nodos con diferenciación para hubs y anti-colisión
     for (let i = 0; i < N.length; i++) for (let j = i + 1; j < N.length; j++) {
-      const p = N[i], q = N[j], dx = q.x - p.x, dy = q.y - p.y, d2 = Math.max(dx * dx + dy * dy, 60), f = 1400 / d2, d = Math.sqrt(d2);
+      const p = N[i], q = N[j], dx = q.x - p.x, dy = q.y - p.y, d2 = Math.max(dx * dx + dy * dy, 25), d = Math.sqrt(d2);
+      let rep = 1600;
+      if (p.a.hub && q.a.hub) rep = 26000;
+      else if (p.a.hub || q.a.hub) rep = 4500;
+      const f = rep / d2;
       p.vx -= dx / d * f; p.vy -= dy / d * f; q.vx += dx / d * f; q.vy += dy / d * f;
+
+      const minD = p.r + q.r + (p.a.hub && q.a.hub ? 85 : (p.a.hub || q.a.hub) ? 24 : 10);
+      if (d < minD) {
+        const push = (minD - d) * .25;
+        p.vx -= dx / d * push; p.vy -= dy / d * push; q.vx += dx / d * push; q.vy += dy / d * push;
+      }
     }
+    // 2. Fuerzas elásticas
     for (const r of REL) {
       const p = N[byId[r.a].i], q = N[byId[r.b].i]; if (S.cut > .5 && (r.a === 'H-PRO' || r.b === 'H-PRO')) continue;
-      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1, ideal = (p.a.hub || q.a.hub) ? 70 : 110, f = (d - ideal) * .02;
-      p.vx += dx / d * f; p.vy += dy / d * f; q.vx -= dx / d * f; q.vy -= dy / d * f;
+      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
+      let ideal = 65, strength = .025;
+      if (p.a.hub && q.a.hub) { ideal = 210; strength = .004; }
+      else if (p.a.hub || q.a.hub) { ideal = 75; strength = .02; }
+      else { ideal = 90; strength = .015; }
+      const f = (d - ideal) * strength;
+      p.vx += dx / d * f; p.vy += dy / d * f; q.vx -= dx / d * f; q.vy += dy / d * f;
     }
+    // 3. Anclaje a sectores comunitarios
     for (const n of N) {
       const g = ORD.indexOf(n.a.com), an = g / 5 * Math.PI * 2 - Math.PI / 2;
-      n.vx += (Math.cos(an) * 150 - n.x) * .003; n.vy += (Math.sin(an) * 150 - n.y) * .003;
-      n.vx *= .82; n.vy *= .82; n.x += n.vx * k; n.y += n.vy * k;
-      const rr = Math.hypot(n.x, n.y); if (rr > 285) { n.x *= 285 / rr; n.y *= 285 / rr; }
+      const tx = Math.cos(an) * (n.a.hub ? 175 : 160), ty = Math.sin(an) * (n.a.hub ? 175 : 160);
+      const pull = n.a.hub ? .016 : .005;
+      n.vx += (tx - n.x) * pull; n.vy += (ty - n.y) * pull;
+      n.vx *= .80; n.vy *= .80; n.x += n.vx * k; n.y += n.vy * k;
+      const rr = Math.hypot(n.x, n.y); if (rr > 280) { n.x *= 280 / rr; n.y *= 280 / rr; }
     }
   }
   function dibujar(dt) {
-    const w = L.w, h = L.h, sc = Math.min(w, h) / 620, ox = w / 2 + (w > 900 ? 0 : 0), oy = h / 2;
+    const w = L.w, h = L.h, sc = Math.min(w, h) / 620, ox = w / 2, oy = h / 2;
     const X = x => ox + x * sc, Y = y => oy + y * sc;
     ctx.clearRect(0, 0, w, h);
     // anillos de fondo
@@ -239,7 +264,7 @@ pasos($('#sintaxis'), i => {
       if (cortado(r)) al *= 1 - S.cut * .92;
       if (hover && (r.a === hover || r.b === hover)) al = .95;
       const c = hex(DIM[r.d].c);
-      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, dx = q.x - p.x, dy = q.y - p.y, L_ = Math.hypot(dx, dy) || 1, bend = .12;
+      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, dx = q.x - p.x, dy = q.y - p.y, bend = .12;
       ctx.strokeStyle = rgba(c, al); ctx.lineWidth = (dimSel && r.d === dimSel ? 1.6 : 1) * Math.max(.8, sc);
       ctx.beginPath(); ctx.moveTo(X(p.x), Y(p.y)); ctx.quadraticCurveTo(X(mx - dy * bend), Y(my + dx * bend), X(q.x), Y(q.y)); ctx.stroke();
     }
@@ -260,9 +285,66 @@ pasos($('#sintaxis'), i => {
       const g = ctx.createRadialGradient(X(n.x), Y(n.y), 0, X(n.x), Y(n.y), r * 2.6); g.addColorStop(0, rgba(n.col, .45 * al)); g.addColorStop(1, rgba(n.col, 0));
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X(n.x), Y(n.y), r * 2.6, 0, 7); ctx.fill();
       ctx.fillStyle = rgba(mixC(n.col, [255, 255, 255], .15), al); ctx.beginPath(); ctx.arc(X(n.x), Y(n.y), r, 0, 7); ctx.fill();
+
+      // Etiquetas de hubs orientadas radialmente hacia afuera sin colisiones
       if (n.a.hub || hover === n.a.id) {
-        ctx.font = `${n.a.hub ? 600 : 500} ${n.a.hub ? 12.5 : 11.5}px "Space Grotesk",sans-serif`; ctx.textAlign = 'center';
-        ctx.fillStyle = `rgba(233,237,230,${al})`; ctx.fillText(n.a.id === 'H-PRO' && S.cut > .5 ? 'Corabastos (apagado)' : n.a.n, X(n.x), Y(n.y) - r - 8);
+        ctx.font = (n.a.hub ? '600 12.5px' : '500 11.5px') + ' "Space Grotesk",sans-serif';
+        const txt = n.a.id === 'H-PRO' && S.cut > .5 ? 'Corabastos (apagado)' : n.a.n;
+        const ang = Math.atan2(n.y, n.x);
+        const cosA = Math.cos(ang), sinA = Math.sin(ang);
+        const distOffset = (r + (n.a.hub ? 12 : 8)) * Math.max(.8, sc);
+        const tx = X(n.x + cosA * distOffset);
+        const ty = Y(n.y + sinA * distOffset);
+
+        if (Math.abs(cosA) < .35) {
+          ctx.textAlign = 'center';
+          ctx.textBaseline = sinA < 0 ? 'bottom' : 'top';
+        } else if (cosA > 0) {
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+        } else {
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+        }
+
+        ctx.strokeStyle = '#060807';
+        ctx.lineWidth = 4;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(txt, tx, ty);
+        ctx.fillStyle = 'rgba(233,237,230,' + al + ')';
+        ctx.fillText(txt, tx, ty);
+      }
+    }
+    // Tooltip flotante para nodo seleccionado / hover
+    if (hover) {
+      const hNode = N.find(n => n.a.id === hover);
+      if (hNode && !hNode.a.hub) {
+        const hx = X(hNode.x), hy = Y(hNode.y);
+        const name = hNode.a.n, com = COM[hNode.a.com].n, dim = DIM[hNode.a.dim].n, desc = hNode.a.d || '';
+        ctx.save();
+        ctx.font = '600 12px "Space Grotesk",sans-serif';
+        const wName = ctx.measureText(name).width;
+        ctx.font = '400 10.5px "Space Grotesk",sans-serif';
+        const wDesc = Math.min(260, ctx.measureText(desc).width);
+        const boxW = Math.max(wName, wDesc, 140) + 20;
+        const boxH = desc ? 56 : 38;
+        let bx = hx + 14; if (bx + boxW > w - 10) bx = hx - boxW - 14;
+        let by = hy - boxH / 2; if (by < 10) by = 10; if (by + boxH > h - 10) by = h - boxH - 10;
+        ctx.fillStyle = 'rgba(12, 16, 15, 0.94)';
+        ctx.strokeStyle = 'rgba(233, 237, 230, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, boxW, boxH, 8); else ctx.rect(bx, by, boxW, boxH);
+        ctx.fill(); ctx.stroke();
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.font = '600 12px "Space Grotesk",sans-serif'; ctx.fillStyle = '#e9ede6'; ctx.fillText(name, bx + 10, by + 8);
+        ctx.font = '500 10px "JetBrains Mono",monospace'; ctx.fillStyle = hex(COM[hNode.a.com].c); ctx.fillText(com + ' · ' + dim, bx + 10, by + 24);
+        if (desc) {
+          ctx.font = '400 10px "Space Grotesk",sans-serif'; ctx.fillStyle = '#8e9a93';
+          const shortDesc = desc.length > 40 ? desc.slice(0, 39) + '…' : desc;
+          ctx.fillText(shortDesc, bx + 10, by + 38);
+        }
+        ctx.restore();
       }
     }
   }
@@ -276,7 +358,7 @@ pasos($('#sintaxis'), i => {
   cv.addEventListener('pointerleave', () => hover = null);
   pasos($('#red'), i => {
     dimSel = [0, 1, 2, 3, 0][i]; T.cut = i === 4 ? 1 : 0;
-    $('#leyRed').innerHTML = i === 0 ? Object.values(COM).map(c => `<span class="chip"><i style="background:${c.c}"></i>${c.n}</span>`).join('') : i === 4 ? 'Corabastos apagado: sus vínculos se rompen' : `<span class="chip"><i style="background:${DIM[dimSel].c}"></i>${dimSel} · ${DIM[dimSel].n}: ${DIM[dimSel].d}</span>`;
+    $('#leyRed').innerHTML = i === 0 ? Object.values(COM).map(c => '<span class="chip"><i style="background:' + c.c + '"></i>' + c.n + '</span>').join('') : i === 4 ? 'Corabastos apagado: sus vínculos se rompen' : '<span class="chip"><i style="background:' + DIM[dimSel].c + '"></i>' + dimSel + ' · ' + DIM[dimSel].n + ': ' + DIM[dimSel].d + '</span>';
   });
 }
 
@@ -310,12 +392,12 @@ pasos($('#sintaxis'), i => {
     const [x, y] = pos[c.id], g = svgEl('g', { class: 'comp', tabindex: 0, role: 'button', 'aria-label': c.n }, gN);
     const halo = svgEl('circle', { cx: x, cy: y, r: 44, fill: c.c, opacity: 0, filter: 'url(#gl)' }, g);
     svgEl('circle', { class: 'bg', cx: x, cy: y, r: 36, fill: '#0c100f', stroke: c.c, 'stroke-width': 1.5 }, g);
-    svgEl('text', { x, y: y + 7, 'text-anchor': 'middle', 'font-size': 21 }, g, c.icon);
+    svgEl('text', { x, y: y + 6, 'text-anchor': 'middle', 'font-family': 'JetBrains Mono,monospace', 'font-size': 18, 'font-weight': 600, fill: c.c }, g, c.num);
     const lab = svgEl('text', { x, y: y + (y > cy + 20 ? 56 : -46), 'text-anchor': 'middle', fill: '#e9ede6', 'font-family': 'Space Grotesk,sans-serif', 'font-size': 13, 'font-weight': 600 }, g, c.n);
     g.addEventListener('click', () => { auto = false; elegir(c.id); }); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auto = false; elegir(c.id); } });
     return { c, g, halo };
   });
-  $('#pillsComp').innerHTML = COMPONENTES.map(c => `<button class="pill" data-c="${c.id}">${c.n}</button>`).join('') + `<button class="pill" id="pAuto">▶ Recorrer solo</button>`;
+  $('#pillsComp').innerHTML = COMPONENTES.map(c => `<button class="pill" data-c="${c.id}">${c.n}</button>`).join('') + `<button class="pill" id="pAuto">Recorrido automático</button>`;
   document.querySelectorAll('#pillsComp [data-c]').forEach(b => b.onclick = () => { auto = false; elegir(b.dataset.c); });
   let sel = null, auto = true, tAuto = 0;
   $('#pAuto').onclick = () => { auto = !auto; tAuto = 0; $('#pAuto').classList.toggle('on', auto); };
@@ -325,7 +407,7 @@ pasos($('#sintaxis'), i => {
     FL.forEach(f => { const on = f.a === id || f.b === id; f.g.classList.toggle('fuera', !on); f.lt.setAttribute('opacity', on ? 1 : 0); });
     document.querySelectorAll('#pillsComp [data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === id));
     $('#pAuto').classList.toggle('on', auto);
-    $('#det').innerHTML = `<div class="barra" id="barra"></div><p class="eyebrow" style="margin:0;color:${c.c}">${c.icon} componente</p><h3>${c.n}</h3><p class="que">${c.que}</p><p class="meta">${c.dato}</p>
+    $('#det').innerHTML = `<div class="barra" id="barra"></div><p class="eyebrow" style="margin:0;color:${c.c}">Componente ${c.num} · ${c.id.toUpperCase()}</p><h3>${c.n}</h3><p class="que">${c.que}</p><p class="meta">${c.dato}</p>
       <ol class="linea">${c.pasos.map(([t, como, ids], i) => `<li style="animation-delay:${.08 + i * .09}s"><span class="num" style="background:${c.c}">${i + 1}</span><b>${t}</b><p>${como}</p><div class="who">${ids.map(x => { const a = byId[x]; return `<span><i style="background:${COM[a.com].c}"></i>${a.n}</span>`; }).join('')}</div></li>`).join('')}</ol>`;
   }
   elegir('cmp');
@@ -363,8 +445,8 @@ pasos($('#sintaxis'), i => {
     });
     const a = angA(ASAMBLEAS.length), sx = C[0] + Math.cos(a) * RC, sy = C[1] + Math.sin(a) * RC, x = C[0] + Math.cos(a) * RA, y = C[1] + Math.sin(a) * RA;
     svgEl('line', { x1: sx, y1: sy, x2: x, y2: y, stroke: 'rgba(148,201,115,.15)', 'stroke-dasharray': '2 5' }, gBase);
-    svgEl('circle', { cx: sx, cy: sy, r: 15, fill: '#4f8a3c' }, gBase);
-    svgEl('text', { x: sx, y: sy + 5, 'text-anchor': 'middle', 'font-size': 14 }, gBase, '🌳');
+    svgEl('circle', { cx: sx, cy: sy, r: 15, fill: '#0c100f', stroke: '#94c973', 'stroke-width': 1.6 }, gBase);
+    svgEl('text', { x: sx, y: sy + 4, 'text-anchor': 'middle', fill: '#94c973', 'font-family': 'JetBrains Mono,monospace', 'font-size': 10.5, 'font-weight': 600 }, gBase, 'SB');
     svgEl('text', { x, y: y + 5, 'text-anchor': 'middle', fill: '#94c973', 'font-family': 'Space Grotesk,sans-serif', 'font-size': 13, 'font-weight': 600 }, gBase, 'Colectivo Bavaria');
     svgEl('text', { x, y: y + 21, 'text-anchor': 'middle', fill: '#8e9a93', 'font-family': 'JetBrains Mono,monospace', 'font-size': 10 }, gBase, 'asiento fijo · guardián del bosque');
   }
@@ -560,13 +642,13 @@ pasos($('#sintaxis'), i => {
     GR.forEach(g => graf(g, anim)); cursor();
   }
   correr(false);
-  const tr = $('#modT'); tr.oninput = () => { jug = false; $('#modPlay').textContent = '▶ Simular'; idx = +tr.value; cursor(); };
-  let jug = false; $('#modPlay').onclick = () => { if (jug) { jug = false; $('#modPlay').textContent = '▶ Simular'; return; } if (idx >= 730) idx = 0; jug = true; $('#modPlay').textContent = '❚❚ Pausa'; };
+  const tr = $('#modT'); tr.oninput = () => { jug = false; $('#modPlay').textContent = 'Simular'; idx = +tr.value; cursor(); };
+  let jug = false; $('#modPlay').onclick = () => { if (jug) { jug = false; $('#modPlay').textContent = 'Simular'; return; } if (idx >= 730) idx = 0; jug = true; $('#modPlay').textContent = 'Pausa'; };
   let vis = false, ult = performance.now(), acc = 0, primera = true;
-  visible(svg, v => { vis = v; if (v && primera) { primera = false; idx = 0; jug = true; $('#modPlay').textContent = '❚❚ Pausa'; GR.forEach(g => graf(g, true)); } });
+  visible(svg, v => { vis = v; if (v && primera) { primera = false; idx = 0; jug = true; $('#modPlay').textContent = 'Pausa'; GR.forEach(g => graf(g, true)); } });
   (function bucle(now) {
     requestAnimationFrame(bucle); const dt = Math.min(.05, (now - ult) / 1000); ult = now; if (!vis) return;
-    if (jug) { acc += dt * 90; const st = Math.floor(acc); if (st) { acc -= st; idx = Math.min(730, idx + st); tr.value = idx; cursor(); if (idx >= 730) { jug = false; $('#modPlay').textContent = '▶ Simular'; } } }
+    if (jug) { acc += dt * 90; const st = Math.floor(acc); if (st) { acc -= st; idx = Math.min(730, idx + st); tr.value = idx; cursor(); if (idx >= 730) { jug = false; $('#modPlay').textContent = 'Simular'; } } }
     const tt = now / 1000;
     for (const T of TANK) {
       const v = RUN[T.k][idx], f = Math.max(0, Math.min(1, v / RUN.max[T.k]));

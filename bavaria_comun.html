@@ -69,6 +69,7 @@ a{color:var(--amb)}
 .dato b.up{color:var(--verde)}.dato b.dn{color:var(--rojo)}
 .k{color:var(--amb);font-weight:600}
 .ley{position:absolute;left:24px;bottom:22px;z-index:3;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:400 11px var(--mono);color:var(--mu);min-width:230px;backdrop-filter:blur(10px)}
+#leyRed{left:auto;right:24px}
 .ley i{display:block;height:8px;border-radius:4px;margin:6px 0 4px}
 .ley .lr{display:flex;justify-content:space-between}
 .chip{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--sans);padding:4px 10px;border-radius:999px;border:1px solid var(--line2);margin:3px 3px 0 0}
@@ -334,7 +335,7 @@ details.ecu pre{font:400 12px/1.6 var(--mono);color:#b9c3bd;white-space:pre-wrap
     <div>
       <div class="diag">
         <svg id="svgMod" viewBox="0 0 1000 500" role="img" aria-label="Diagrama de stocks y flujos"></svg>
-        <div class="reloj"><button class="btn prim" id="modPlay">▶ Simular</button><input type="range" id="modT" min="0" max="730" value="730" aria-label="Tiempo"><span class="t" id="modTt"></span></div>
+        <div class="reloj"><button class="btn prim" id="modPlay">Simular</button><input type="range" id="modT" min="0" max="730" value="730" aria-label="Tiempo"><span class="t" id="modTt"></span></div>
         <div class="kpis" id="kpis"></div>
       </div>
     </div>
