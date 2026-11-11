@@ -204,9 +204,17 @@ pasos($('#sintaxis'), i => {
   const cv = $('#cvRed'), L = lienzo(cv), ctx = L.ctx;
   const N = A.map((a, i) => {
     const g = ORD.indexOf(a.com), an = g / 5 * Math.PI * 2 - Math.PI / 2;
-    const dist = a.hub ? 175 : 175 + (Math.random() - .5) * 80;
-    const ang = a.hub ? an : an + (Math.random() - .5) * .7;
-    return { a, x: Math.cos(ang) * dist, y: Math.sin(ang) * dist, vx: 0, vy: 0, r: a.hub ? 16 : 6, col: hex(COM[a.com].c), al: 1 };
+    const dist = a.hub ? 1 : (1 + (Math.random() - .5) * .35);
+    return {
+      a,
+      x: Math.cos(an) * (a.hub ? 250 : 210) * dist,
+      y: Math.sin(an) * (a.hub ? 140 : 115) * dist,
+      vx: 0,
+      vy: 0,
+      r: a.hub ? 16 : 6,
+      col: hex(COM[a.com].c),
+      al: 1
+    };
   });
   const S = { dim: 0, cut: 0, show: 0 }, T = { dim: 0, cut: 0, show: 1 };
   let dimSel = 0, hover = null;
@@ -219,14 +227,14 @@ pasos($('#sintaxis'), i => {
     for (let i = 0; i < N.length; i++) for (let j = i + 1; j < N.length; j++) {
       const p = N[i], q = N[j], dx = q.x - p.x, dy = q.y - p.y, d2 = Math.max(dx * dx + dy * dy, 25), d = Math.sqrt(d2);
       let rep = 1600;
-      if (p.a.hub && q.a.hub) rep = 26000;
-      else if (p.a.hub || q.a.hub) rep = 4500;
+      if (p.a.hub && q.a.hub) rep = 35000;
+      else if (p.a.hub || q.a.hub) rep = 5000;
       const f = rep / d2;
       p.vx -= dx / d * f; p.vy -= dy / d * f; q.vx += dx / d * f; q.vy += dy / d * f;
 
-      const minD = p.r + q.r + (p.a.hub && q.a.hub ? 85 : (p.a.hub || q.a.hub) ? 24 : 10);
+      const minD = p.r + q.r + (p.a.hub && q.a.hub ? 90 : (p.a.hub || q.a.hub) ? 26 : 12);
       if (d < minD) {
-        const push = (minD - d) * .25;
+        const push = (minD - d) * .3;
         p.vx -= dx / d * push; p.vy -= dy / d * push; q.vx += dx / d * push; q.vy += dy / d * push;
       }
     }
@@ -234,29 +242,41 @@ pasos($('#sintaxis'), i => {
     for (const r of REL) {
       const p = N[byId[r.a].i], q = N[byId[r.b].i]; if (S.cut > .5 && (r.a === 'H-PRO' || r.b === 'H-PRO')) continue;
       const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
-      let ideal = 65, strength = .025;
-      if (p.a.hub && q.a.hub) { ideal = 210; strength = .004; }
-      else if (p.a.hub || q.a.hub) { ideal = 75; strength = .02; }
-      else { ideal = 90; strength = .015; }
+      let ideal = 60, strength = .025;
+      if (p.a.hub && q.a.hub) { ideal = 240; strength = .003; }
+      else if (p.a.hub || q.a.hub) { ideal = 70; strength = .022; }
+      else { ideal = 80; strength = .015; }
       const f = (d - ideal) * strength;
-      p.vx += dx / d * f; p.vy += dy / d * f; q.vx -= dx / d * f; q.vy += dy / d * f;
+      p.vx += dx / d * f; p.vy += dy / d * f; q.vx -= dx / d * f; q.vy -= dy / d * f;
     }
-    // 3. Anclaje a sectores comunitarios
+    // 3. Anclaje a sectores comunitarios en elipse espaciosa
     for (const n of N) {
       const g = ORD.indexOf(n.a.com), an = g / 5 * Math.PI * 2 - Math.PI / 2;
-      const tx = Math.cos(an) * (n.a.hub ? 175 : 160), ty = Math.sin(an) * (n.a.hub ? 175 : 160);
-      const pull = n.a.hub ? .016 : .005;
+      const tx = Math.cos(an) * (n.a.hub ? 250 : 210);
+      const ty = Math.sin(an) * (n.a.hub ? 140 : 115);
+      const pull = n.a.hub ? .018 : .006;
       n.vx += (tx - n.x) * pull; n.vy += (ty - n.y) * pull;
-      n.vx *= .80; n.vy *= .80; n.x += n.vx * k; n.y += n.vy * k;
-      const rr = Math.hypot(n.x, n.y); if (rr > 280) { n.x *= 280 / rr; n.y *= 280 / rr; }
+      n.vx *= .78; n.vy *= .78; n.x += n.vx * k; n.y += n.vy * k;
+      const ellip = (n.x / 330) ** 2 + (n.y / 185) ** 2;
+      if (ellip > 1) {
+        const s = 1 / Math.sqrt(ellip);
+        n.x *= s; n.y *= s;
+      }
     }
   }
   function dibujar(dt) {
-    const w = L.w, h = L.h, sc = Math.min(w, h) / 620, ox = w / 2, oy = h / 2;
+    const w = L.w, h = L.h;
+    const sc = Math.min(w / 760, h / 460) * 0.88;
+    const ox = w / 2, oy = h / 2 + 10;
     const X = x => ox + x * sc, Y = y => oy + y * sc;
     ctx.clearRect(0, 0, w, h);
-    // anillos de fondo
-    ctx.strokeStyle = 'rgba(233,237,230,.05)'; ctx.lineWidth = 1; for (const r of [120, 220, 320]) { ctx.beginPath(); ctx.arc(ox, oy, r * sc, 0, 7); ctx.stroke(); }
+    // anillos elípticos de fondo
+    ctx.strokeStyle = 'rgba(233,237,230,.05)'; ctx.lineWidth = 1;
+    for (const r of [110, 190, 270]) {
+      ctx.beginPath();
+      ctx.ellipse(ox, oy, r * sc * 1.25, r * sc * 0.78, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     const cortado = r => r.a === 'H-PRO' || r.b === 'H-PRO';
     for (const r of REL) {
       const p = N[byId[r.a].i], q = N[byId[r.b].i];
@@ -286,25 +306,36 @@ pasos($('#sintaxis'), i => {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X(n.x), Y(n.y), r * 2.6, 0, 7); ctx.fill();
       ctx.fillStyle = rgba(mixC(n.col, [255, 255, 255], .15), al); ctx.beginPath(); ctx.arc(X(n.x), Y(n.y), r, 0, 7); ctx.fill();
 
-      // Etiquetas de hubs orientadas radialmente hacia afuera sin colisiones
+      // Etiquetas de hubs orientadas estratégicamente hacia afuera del layout
       if (n.a.hub || hover === n.a.id) {
         ctx.font = (n.a.hub ? '600 12.5px' : '500 11.5px') + ' "Space Grotesk",sans-serif';
         const txt = n.a.id === 'H-PRO' && S.cut > .5 ? 'Corabastos (apagado)' : n.a.n;
-        const ang = Math.atan2(n.y, n.x);
-        const cosA = Math.cos(ang), sinA = Math.sin(ang);
-        const distOffset = (r + (n.a.hub ? 12 : 8)) * Math.max(.8, sc);
-        const tx = X(n.x + cosA * distOffset);
-        const ty = Y(n.y + sinA * distOffset);
 
-        if (Math.abs(cosA) < .35) {
-          ctx.textAlign = 'center';
-          ctx.textBaseline = sinA < 0 ? 'bottom' : 'top';
-        } else if (cosA > 0) {
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle';
+        let tx, ty;
+        if (n.a.id === 'H-COM') {
+          // Arriba al centro
+          ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          tx = X(n.x); ty = Y(n.y) - (r + 10) * Math.max(.8, sc);
+        } else if (n.a.id === 'H-PRO') {
+          // A la derecha
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          tx = X(n.x) + (r + 10) * Math.max(.8, sc); ty = Y(n.y);
+        } else if (n.a.id === 'H-FOR') {
+          // Abajo a la derecha
+          ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+          tx = X(n.x) + (r + 8) * Math.max(.8, sc); ty = Y(n.y) + (r + 6) * Math.max(.8, sc);
+        } else if (n.a.id === 'H-INS') {
+          // Abajo a la izquierda
+          ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+          tx = X(n.x) - (r + 8) * Math.max(.8, sc); ty = Y(n.y) + (r + 6) * Math.max(.8, sc);
+        } else if (n.a.id === 'H-ENT') {
+          // A la izquierda
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          tx = X(n.x) - (r + 10) * Math.max(.8, sc); ty = Y(n.y);
         } else {
-          ctx.textAlign = 'right';
-          ctx.textBaseline = 'middle';
+          // Otros nodos en hover
+          ctx.textAlign = n.x >= 0 ? 'left' : 'right'; ctx.textBaseline = 'middle';
+          tx = X(n.x) + (n.x >= 0 ? 1 : -1) * (r + 8) * Math.max(.8, sc); ty = Y(n.y);
         }
 
         ctx.strokeStyle = '#060807';
@@ -352,7 +383,9 @@ pasos($('#sintaxis'), i => {
   (function bucle(now) { requestAnimationFrame(bucle); const dt = Math.min(.05, (now - ult) / 1000); ult = now; if (!vis) return; tween(S, T, RM ? 60 : dt); sim(RM ? .016 : dt); dibujar(RM ? 0 : dt); })(ult);
   visible(cv, v => vis = v);
   cv.addEventListener('pointermove', e => {
-    const r = cv.getBoundingClientRect(), sc = Math.min(L.w, L.h) / 620, x = (e.clientX - r.left - L.w / 2) / sc, y = (e.clientY - r.top - L.h / 2) / sc;
+    const r = cv.getBoundingClientRect();
+    const sc = Math.min(L.w / 760, L.h / 460) * 0.88;
+    const x = (e.clientX - r.left - L.w / 2) / sc, y = (e.clientY - r.top - (L.h / 2 + 10)) / sc;
     let best = null, bd = 400; for (const n of N) { const d = (n.x - x) ** 2 + (n.y - y) ** 2; if (d < bd) { bd = d; best = n.a.id; } } hover = best;
   });
   cv.addEventListener('pointerleave', () => hover = null);
