@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bavaria Común</title>
+<meta name="description" content="Bavaria Común · Kennedy, Bogotá: sintaxis espacial, red de actores, cómo se hace, asambleas rotativas y modelo dinámico.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;700&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Concepto: un recorrido de scroll en capítulos; a la izquierda el relato, a la derecha un escenario fijo que se transforma. Negro de noche urbana, la sintaxis pone el color. */
+:root{
+  --bg:#060807; --bg2:#0c100f; --panel:rgba(10,14,13,.82); --line:rgba(233,237,230,.10); --line2:rgba(233,237,230,.2);
+  --fg:#e9ede6; --mu:#8e9a93; --mu2:#5b6661;
+  --amb:#e9a23b; --verde:#94c973; --agua:#5fb3d9; --rosa:#e58aa8; --lila:#a98bd6; --rojo:#e3604c;
+  --display:"Unbounded","Arial Black",system-ui,sans-serif; --sans:"Space Grotesk",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--amb)}
+::selection{background:var(--amb);color:#000}
+.gut{padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
+
+/* barra superior */
+.top{position:fixed;inset:0 0 auto;z-index:40;display:flex;align-items:center;gap:14px;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;background:linear-gradient(#060807ee,#06080700);pointer-events:none}
+.top>*{pointer-events:auto}
+.marca{font:500 12px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--fg);text-decoration:none}
+.marca b{color:var(--amb);font-weight:700}
+.caps{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.caps a{font:500 11px var(--mono);color:var(--mu);text-decoration:none;padding:5px 9px;border-radius:999px;border:1px solid transparent;transition:.25s}
+.caps a:hover{color:var(--fg);border-color:var(--line2)}
+.caps a.on{color:#000;background:var(--amb)}
+.prog{position:fixed;left:0;top:0;height:2px;background:var(--amb);z-index:41;width:0}
+
+/* portada */
+.hero{position:relative;height:min(92svh,860px);min-height:560px;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%}
+.hero .txt{position:absolute;left:0;right:0;bottom:7%;z-index:2}
+.eyebrow{font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--amb);margin:0 0 14px}
+.hero h1{font:700 clamp(54px,11vw,150px)/.88 var(--display);letter-spacing:-.04em;margin:0;text-wrap:balance}
+.hero h1 span{display:block;color:transparent;-webkit-text-stroke:1.5px var(--fg)}
+.hero .lede{max-width:560px;font-size:clamp(15px,1.6vw,18px);color:#cdd5cf;margin:18px 0 22px}
+.cifras{display:flex;flex-wrap:wrap;gap:8px 26px;font:400 12px var(--mono);color:var(--mu)}
+.cifras b{display:block;font:500 22px var(--display);color:var(--fg);letter-spacing:-.02em}
+.bajar{position:absolute;right:max(18px,env(safe-area-inset-right,0px));bottom:7%;z-index:2;font:500 11px var(--mono);color:var(--fg);text-decoration:none;letter-spacing:.14em;writing-mode:vertical-rl;display:flex;gap:10px;align-items:center}
+.bajar::after{content:"";width:1px;height:70px;background:linear-gradient(var(--amb),transparent);animation:baja 2.2s infinite}
+@keyframes baja{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* capítulos con scroll */
+.cap-tit{display:flex;align-items:baseline;gap:14px;margin:0 0 6px}
+.cap-n{font:500 12px var(--mono);color:var(--amb)}
+.scrolly{display:grid;grid-template-columns:minmax(300px,460px) minmax(0,1fr);position:relative;border-bottom:1px solid var(--line)}
+.stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;grid-column:2;grid-row:1}
+.stage canvas,.stage>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.steps{grid-column:1;grid-row:1;position:relative;z-index:2;padding-top:18vh;padding-bottom:30vh}
+.step{min-height:82vh;display:flex;align-items:center}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px 24px 22px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);opacity:.38;transform:translateY(14px) scale(.985);transition:opacity .6s,transform .6s cubic-bezier(.2,.7,.2,1),border-color .6s;max-width:440px}
+.step.on .card{opacity:1;transform:none;border-color:var(--line2)}
+.card h2{font:500 clamp(24px,2.6vw,34px)/1.08 var(--display);letter-spacing:-.025em;margin:0 0 12px;text-wrap:balance}
+.card h3{font:500 18px/1.2 var(--display);margin:0 0 10px;letter-spacing:-.01em;text-wrap:balance}
+.card p{margin:0 0 10px;color:#cdd5cf;font-size:15.5px}
+.card p:last-child{margin-bottom:0}
+.dato{display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 4px}
+.dato div{font:400 11px var(--mono);color:var(--mu);letter-spacing:.02em}
+.dato b{display:block;font:500 26px var(--display);letter-spacing:-.03em;color:var(--fg);font-variant-numeric:tabular-nums}
+.dato b.up{color:var(--verde)}.dato b.dn{color:var(--rojo)}
+.k{color:var(--amb);font-weight:600}
+.ley{position:absolute;left:24px;bottom:22px;z-index:3;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:400 11px var(--mono);color:var(--mu);min-width:230px;backdrop-filter:blur(10px)}
+.ley i{display:block;height:8px;border-radius:4px;margin:6px 0 4px}
+.ley .lr{display:flex;justify-content:space-between}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--sans);padding:4px 10px;border-radius:999px;border:1px solid var(--line2);margin:3px 3px 0 0}
+.chip i{width:9px;height:9px;border-radius:50%}
+
+/* sub-red */
+.bloque{padding-top:110px;padding-bottom:90px;border-bottom:1px solid var(--line)}
+.bloque .intro{max-width:760px;margin-bottom:26px}
+.bloque .intro h2{font:500 clamp(30px,4.4vw,58px)/1.02 var(--display);letter-spacing:-.035em;margin:6px 0 14px;text-wrap:balance}
+.bloque .intro p{color:#cdd5cf;font-size:17px;margin:0}
+.subred{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-items:start}
+.subred svg{width:100%;height:auto;display:block;overflow:visible}
+.comp{cursor:pointer}
+.comp circle.bg{transition:r .35s,stroke-width .35s}
+.comp:hover circle.bg{stroke-width:3}
+.comp text{pointer-events:none}
+.flujo{transition:opacity .45s}
+.flujo.fuera{opacity:.08}
+.det{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:22px;min-height:520px;position:relative;overflow:hidden}
+.det .barra{position:absolute;left:0;top:0;height:2px;background:var(--amb);width:0}
+.det h3{font:500 26px/1.1 var(--display);letter-spacing:-.025em;margin:4px 0 8px}
+.det .que{color:#cdd5cf;margin:0 0 6px}
+.det .meta{font:400 11.5px var(--mono);color:var(--mu);margin:0 0 18px}
+.linea{list-style:none;margin:0;padding:0;position:relative}
+.linea::before{content:"";position:absolute;left:13px;top:6px;bottom:6px;width:1px;background:var(--line2);transform-origin:top;animation:crece .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes crece{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.linea li{position:relative;padding:0 0 16px 42px;animation:sube .55s cubic-bezier(.2,.7,.2,1) both}
+@keyframes sube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.linea .num{position:absolute;left:0;top:0;width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font:600 11px var(--mono);color:#000}
+.linea b{display:block;font-weight:600;font-size:15px;margin-bottom:2px}
+.linea p{margin:0 0 6px;font-size:13.5px;color:#b9c3bd}
+.linea .who{display:flex;flex-wrap:wrap;gap:4px}
+.linea .who span{font:500 11px var(--sans);padding:2px 8px;border-radius:999px;background:rgba(233,237,230,.06);border:1px solid var(--line)}
+.linea .who span i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
+.pill{font:500 12px var(--sans);padding:6px 11px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--fg);cursor:pointer;transition:.25s}
+.pill:hover{border-color:var(--fg)}
+.pill.on{background:var(--fg);color:#000;border-color:var(--fg)}
+.pill:focus-visible,.seg button:focus-visible,input:focus-visible,.btn:focus-visible{outline:2px solid var(--amb);outline-offset:2px}
+
+/* asambleas */
+.contador{position:absolute;left:24px;top:84px;z-index:3;text-align:left;font:400 11px var(--mono);color:var(--mu)}
+.contador b{display:block;font:500 46px/1 var(--display);letter-spacing:-.04em;color:var(--fg);font-variant-numeric:tabular-nums}
+.contador .per{font:500 13px var(--mono);color:var(--amb);margin-top:6px}
+.dock{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:3;display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px;backdrop-filter:blur(10px);flex-wrap:wrap;justify-content:center;max-width:calc(100% - 32px)}
+.seg{display:flex;gap:2px;background:rgba(233,237,230,.05);border-radius:999px;padding:2px}
+.seg button{font:500 12px var(--sans);border:0;background:transparent;color:var(--mu);padding:6px 12px;border-radius:999px;cursor:pointer;transition:.25s}
+.seg button.on{background:var(--fg);color:#000}
+.btn{font:600 12px var(--sans);border:1px solid var(--line2);background:transparent;color:var(--fg);padding:7px 13px;border-radius:999px;cursor:pointer}
+.btn.prim{background:var(--amb);color:#000;border-color:var(--amb)}
+.persona{transition:transform 1.05s cubic-bezier(.65,0,.25,1),opacity .5s}
+
+/* modelo */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+.diag{background:var(--bg2);border:1px solid var(--line);border-radius:18px;overflow:hidden;position:relative}
+.diag svg{width:100%;height:auto;display:block}
+.reloj{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line)}
+.reloj input{flex:1;accent-color:var(--amb)}
+.reloj .t{font:500 14px var(--mono);color:var(--amb);min-width:84px;text-align:right;font-variant-numeric:tabular-nums}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.kpis div{background:var(--bg2);padding:14px 14px 12px}
+.kpis b{display:block;font:500 clamp(18px,2vw,26px) var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.kpis span{font:400 10.5px var(--mono);color:var(--mu)}
+.kpis em{font:normal 400 10.5px var(--mono);color:var(--mu2);display:block;margin-top:2px}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:18px}
+.panel h4{font:500 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mu);margin:16px 0 8px}
+.panel h4:first-child{margin-top:0}
+.sl{margin:0 0 12px}
+.sl label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.sl label b{font:500 12px var(--mono);color:var(--amb);font-variant-numeric:tabular-nums}
+.sl input{width:100%}
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:var(--line2);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--amb);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--amb);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--amb);border:3px solid var(--bg);cursor:pointer}
+.graficas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:22px}
+.gr{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px 14px 8px}
+.gr h5{margin:0;font:500 13px var(--sans)}
+.gr p{margin:2px 0 6px;font:400 11px var(--mono);color:var(--mu)}
+.gr svg{width:100%;height:auto;display:block}
+.gr .l{transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1)}
+.bucles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:22px}
+.bu{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--bg2)}
+.bu b{font:600 13px var(--mono)}
+.bu p{margin:6px 0 0;font-size:13.5px;color:#b9c3bd}
+details.ecu{margin-top:22px;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg2)}
+details.ecu summary{cursor:pointer;font:500 13px var(--sans)}
+details.ecu pre{font:400 12px/1.6 var(--mono);color:#b9c3bd;white-space:pre-wrap;margin:12px 0 0;overflow-x:auto}
+.pie{padding-top:48px;padding-bottom:60px;color:var(--mu);font:400 12px/1.6 var(--mono)}
+.pie a{margin-right:16px}
+
+@media (max-width:900px){
+  .caps{display:none}
+  .scrolly{grid-template-columns:1fr}
+  .stage{grid-column:1;height:60svh;top:0;border-bottom:1px solid var(--line)}
+  .steps{grid-column:1;grid-row:2;padding-top:0;margin-top:-6svh}
+  .step{min-height:70svh}
+  .card{max-width:none}
+  .ley{left:12px;bottom:12px;min-width:0}
+  .contador{top:56px;left:12px}.contador b{font-size:32px}
+  .subred,.lab{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .graficas,.bucles{grid-template-columns:1fr}
+  .det{min-height:0}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="prog" id="prog"></div>
+<header class="top gut">
+  <a class="marca" href="#inicio"><b>BAVARIA</b> COMÚN</a>
+  <nav class="caps" id="caps">
+    <a href="#sintaxis">01 Sintaxis</a><a href="#red">02 Red</a><a href="#como">03 Cómo se hace</a><a href="#asambleas">04 Asambleas</a><a href="#modelo">05 Modelo</a>
+  </nav>
+</header>
+
+<section class="hero" id="inicio">
+  <canvas id="cvHero" aria-hidden="true"></canvas>
+  <div class="txt gut">
+    <p class="eyebrow">Kennedy · Bogotá · Tesis de Arquitectura y Urbanismo · 2026</p>
+    <h1>Bavaria<span>Común</span></h1>
+    <p class="lede">La antigua fábrica como un distrito de huertas, compost, mercado y bosque, gobernado por la gente que vive alrededor. Este recorrido muestra cómo se mueve la ciudad, quién lo sostiene, cómo se hace cada cosa y qué pasa en diez años.</p>
+    <div class="cifras"><div><b>71,2 ha</b>predio</div><div><b>3.250</b>árboles</div><div><b>40.320</b>vecinos en la UPZ</div><div><b>7,1 km</b>de pasajes nuevos</div><div><b>50</b>actores en red</div></div>
+  </div>
+  <a class="bajar" href="#sintaxis">RECORRER</a>
+</section>
+
+<!-- 01 SINTAXIS -->
+<section class="scrolly" id="sintaxis">
+  <div class="stage"><canvas id="cvMapa" aria-label="Mapa de sintaxis espacial alrededor del predio Bavaria"></canvas><div class="ley" id="leyMapa"></div></div>
+  <div class="steps gut">
+    <div class="step"><div class="card">
+      <div class="cap-tit"><span class="cap-n">01</span><span class="eyebrow" style="margin:0">Sintaxis espacial</span></div>
+      <h2>Un muro de 71 hectáreas</h2>
+      <p>Cada línea es una calle, coloreada por su <span class="k">integración a 800 m</span>: qué tan fácil es llegar a ella caminando diez minutos. Rojo es donde el barrio se encuentra; azul, donde queda aislado.</p>
+      <p>En el centro, el predio de la antigua fábrica: un hueco cerrado que nadie puede cruzar.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>La ciudad lo rodea, no lo cruza</h2>
+      <p>Los puntos son personas caminando. Escogen las calles por su <span class="k">elección</span>: cuántos recorridos cortos pasan por cada una. Todo el movimiento se va por la Av. Boyacá y las vías arteriales, por el borde del muro.</p>
+      <div class="dato"><div><b>0,970</b>elección media a 600 m</div><div><b>4,42</b>giros de profundidad</div></div>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Abrir 7,1 km de pasajes</h2>
+      <p>El muro se abre y aparecen <span class="k">51 tramos</span> de pasaje. La gente empieza a entrar. El barrio se vuelve más fácil de entender.</p>
+      <div class="dato"><div><b class="up">+42 %</b>inteligibilidad</div><div><b>0,661</b>sinergia</div><div><b>+0,2 %</b>integración</div></div>
+      <p>A escala de ciudad casi nada cambia. Bavaria no reordena Bogotá: abre un centro de barrio.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>El oriente se queda de espaldas</h2>
+      <p>Ahora el color es la <span class="k">diferencia</span> entre antes y después. El lado oriente, el más residencial (59 % de sus calles), es el que sigue más segregado después de abrir.</p>
+      <div class="dato"><div><b class="dn">1,303</b>integración Rn oriente</div><div><b>1,381</b>norte</div></div>
+      <p>Ahí hacen falta más puertas: esos vecinos están pegados al predio y son los que deben llenar las asambleas.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Los pasajes no atraen paso</h2>
+      <p>Ninguno de los 51 tramos llega al 25 % de calles con más elección del entorno. Tal como están trazados, sirven como recorridos lentos y verdes, no como calles de comercio.</p>
+      <p>Lo que vive del paso de gente va en el <span class="k">borde</span>. Para un centro vivo adentro hace falta un pasaje recto que cruce de lado a lado.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Cada cosa en su puerta</h2>
+      <p>Con esos datos se asigna un uso a cada entrada:</p>
+      <p><span class="chip"><i style="background:#c2652a"></i>Mercado · entrada 6</span><span class="chip"><i style="background:#e9a23b"></i>Compost · 15</span><span class="chip"><i style="background:#d98b6a"></i>Cocina · 8</span><span class="chip"><i style="background:#e58aa8"></i>Asamblea · 7</span><span class="chip"><i style="background:#94c973"></i>Bancales · 12</span><span class="chip"><i style="background:#4f8a3c"></i>Bosque · 9</span></p>
+      <p>El mercado donde más gente pasa, el compost donde entran los camiones sin cruzar barrios, la cocina y la asamblea a la mano de las casas, el bosque donde hay calma.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- 02 RED -->
+<section class="scrolly" id="red">
+  <div class="stage"><canvas id="cvRed" aria-label="Red de actores de Kennedy"></canvas><div class="ley" id="leyRed"></div></div>
+  <div class="steps gut">
+    <div class="step"><div class="card">
+      <div class="cap-tit"><span class="cap-n">02</span><span class="eyebrow" style="margin:0">Red de actores</span></div>
+      <h2>Cincuenta actores, cinco comunidades</h2>
+      <p>La forma sola no sostiene nada. Juntas de acción comunal, huerteros, recicladores, colegios, la Alcaldía y los humedales forman una red de <span class="k">109 vínculos</span> directos.</p>
+      <p>Las burbujas grandes son los cinco hubs que articulan cada comunidad.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Lo social: convocar y vigilar</h2>
+      <p>Los vínculos <span style="color:#1f9bb4;font-weight:600">sociales</span> son convocatoria comunitaria y veedurías. Pasan casi todos por la Mesa Comunitaria y la Alcaldía.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Lo económico: intercambiar</h2>
+      <p>Los vínculos <span style="color:#e0a21f;font-weight:600">económicos</span> mueven alimento y residuos: huertas, plazas, tiendas y reciclaje. Corabastos está en el centro.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Lo ecológico: el soporte</h2>
+      <p>Los vínculos <span style="color:#7ab23f;font-weight:600">ecológicos</span> unen árboles, humedales y quienes los cuidan. Es la dimensión con más vínculos.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Si Corabastos se apaga</h2>
+      <p>Al quitar un solo hub, sus vínculos se rompen y la red pierde una parte de su fuerza económica. El modelo del capítulo 5 usa exactamente esto: cada actor apagado cambia las curvas.</p>
+      <div class="dato"><div><b class="dn" id="datoCorab">—</b>fuerza económica</div></div>
+    </div></div>
+  </div>
+</section>
+
+<!-- 03 CÓMO SE HACE -->
+<section class="bloque gut" id="como">
+  <div class="intro">
+    <div class="cap-tit"><span class="cap-n">03</span><span class="eyebrow" style="margin:0">Sub-red de Bavaria Común</span></div>
+    <h2>Cómo se hace cada cosa</h2>
+    <p>Nueve componentes que se alimentan entre sí. Los puntos que corren son lo que pasa de uno a otro: abono, cosecha, residuos, decisiones. Toca un componente para ver sus pasos y quién los hace.</p>
+  </div>
+  <div class="pills" id="pillsComp"></div>
+  <div class="subred">
+    <svg id="svgSub" viewBox="0 0 640 600" role="img" aria-label="Componentes de Bavaria Común y sus flujos"></svg>
+    <div class="det" id="det"></div>
+  </div>
+</section>
+
+<!-- 04 ASAMBLEAS -->
+<section class="scrolly" id="asambleas">
+  <div class="stage">
+    <svg id="svgAsa" viewBox="0 -50 800 880" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Rotación de vocerías al consejo federal"></svg>
+    <div class="contador"><b id="cVoc">0</b>personas que han sido vocería<div class="per" id="cPer"></div></div>
+    <div class="dock">
+      <div class="seg" id="segMet"><button data-m="sorteo" class="on">Sorteo</button><button data-m="turno">Turno</button><button data-m="unico">Líder único</button></div>
+      <div class="seg" id="segMes"><button data-x="3">3 m</button><button data-x="6" class="on">6 m</button><button data-x="12">12 m</button></div>
+      <button class="btn" id="asaPlay">Pausa</button>
+    </div>
+  </div>
+  <div class="steps gut">
+    <div class="step"><div class="card">
+      <div class="cap-tit"><span class="cap-n">04</span><span class="eyebrow" style="margin:0">Asambleas</span></div>
+      <h2>Nadie manda solo</h2>
+      <p>Seis asambleas, tres de barrio y tres de trabajo, mandan cada una una vocería a un consejo federal. El Colectivo Salvemos el Bosque Bavaria tiene asiento fijo como guardián del bosque.</p>
+      <p>Cada punto es una persona inscrita que quiere ser vocera.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h3>1 · La vocería dura un periodo</h3>
+      <p>Seis meses en la propuesta. Al terminar, cambia sí o sí. Mira cómo cada periodo una persona nueva viaja al consejo y la anterior vuelve a su asamblea.</p>
+      <h3 style="margin-top:16px">2 · Nadie repite en el ciclo</h3>
+      <p>Quien ya fue vocería queda marcada con un anillo y sale del sorteo hasta que pase toda la bolsa.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h3>3 · Sorteo público con paridad</h3>
+      <p>Se sortea en asamblea abierta entre quienes no han pasado, alternando <span style="color:var(--rosa)">mujer</span> y <span style="color:var(--agua)">hombre</span>; las personas <span style="color:var(--lila)">no binarias</span> entran a la bolsa común.</p>
+      <h3 style="margin-top:16px">4 · Empalme</h3>
+      <p>La vocería saliente queda un periodo como suplente y acompaña a la nueva.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h3>5 · Mandato, no mando</h3>
+      <p>La vocería lleva al consejo lo que decidió su asamblea y vuelve con lo acordado. La asamblea puede revocarla con 2/3. La Personería acompaña la rendición de cuentas cada periodo.</p>
+    </div></div>
+    <div class="step"><div class="card">
+      <h2>Contra el líder único</h2>
+      <p>Con un líder único, el contador se queda en seis personas para siempre. Con sorteo rotativo, en diez años pasan <span class="k">120 personas</span> por la vocería.</p>
+      <p>En el modelo, esa gente que ya llevó la voz se queda: es el bucle <b>R4 · liderazgo distribuido</b>.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- 05 MODELO -->
+<section class="bloque gut" id="modelo">
+  <div class="intro">
+    <div class="cap-tit"><span class="cap-n">05</span><span class="eyebrow" style="margin:0">Modelo dinámico</span></div>
+    <h2>Diez años en un sistema</h2>
+    <p>Cinco acumulados que se llenan y se vacían, como en Vensim. La red de actores entra como fuerza social, económica y ecológica; la vocería, como liderazgo distribuido. Cambia el escenario o un parámetro y mira cómo se reacomoda todo.</p>
+  </div>
+  <div class="lab">
+    <div>
+      <div class="diag">
+        <svg id="svgMod" viewBox="0 0 1000 500" role="img" aria-label="Diagrama de stocks y flujos"></svg>
+        <div class="reloj"><button class="btn prim" id="modPlay">▶ Simular</button><input type="range" id="modT" min="0" max="730" value="730" aria-label="Tiempo"><span class="t" id="modTt"></span></div>
+        <div class="kpis" id="kpis"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h4>Escenario</h4>
+      <div class="seg" id="segEsc" style="margin-bottom:6px"><button data-e="actual">Actual</button><button data-e="propuesta" class="on">Propuesta</button><button data-e="sinred">Sin red</button></div>
+      <p style="font:400 11px/1.5 var(--mono);color:var(--mu);margin:6px 0 0">La línea gris de las gráficas es siempre el escenario actual.</p>
+      <h4>Vocería</h4>
+      <div class="seg" id="segVoc"><button data-m="sorteo" class="on">Sorteo</button><button data-m="turno">Turno</button><button data-m="unico">Líder único</button></div>
+      <h4>Comunidades de la red</h4>
+      <div class="pills" id="pillsCom" style="margin:0"></div>
+      <h4>Parámetros</h4>
+      <div id="sls"></div>
+    </div>
+  </div>
+  <div class="graficas" id="graficas"></div>
+  <div class="bucles" id="bucles"></div>
+  <details class="ecu"><summary>Ver las ecuaciones del modelo</summary><pre id="ecu"></pre></details>
+</section>
+
+<footer class="pie gut">
+  <p><a href="./?modo=kennedy">Red 3D sobre Kennedy</a><a href="red_georef.html">Lámina para imprimir</a><a href="https://anasoficasca-code.github.io/simulador/bavaria.html" target="_blank" rel="noopener">Proyecto Bavaria Común</a></p>
+  <p>Datos: SDS 2021, UAESP, IDPAC, OpenStreetMap (ODbL), Esri World Imagery, análisis angular de segmentos del proyecto. Los coeficientes de comportamiento del modelo y la asignación de usos por entrada son supuestos de diseño para discutir.</p>
+</footer>
+<script type="module" src="data3d/historia.js?v=1"></script>
+</body>
+</html>
